@@ -1,0 +1,31 @@
+﻿<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="216dp"
+    android:height="50dp"
+    android:viewportWidth="1080"
+    android:viewportHeight="250">
+    
+    <!-- Letter R -->
+    <path
+        android:fillColor="#EF4903"
+        android:pathData="M60,40 L160,40 C200,40 230,68 230,105 C230,135 210,158 180,166 L235,210 L175,210 L130,170 L110,170 L110,210 L60,210 Z M110,85 L110,128 L150,128 C168,128 180,118 180,106.5 C180,95 168,85 150,85 Z"/>
+        
+    <!-- Letter A -->
+    <path
+        android:fillColor="#EF4903"
+        android:pathData="M310,40 L370,210 L318,210 L302,165 L248,165 L232,210 L180,210 L240,40 Z M275,88 L258,132 L292,132 Z"/>
+        
+    <!-- Letter G -->
+    <path
+        android:fillColor="#EF4903"
+        android:pathData="M520,110 L520,65 C495,48 460,40 425,40 C355,40 300,90 300,160 C300,230 355,250 425,250 C475,250 515,225 530,185 L475,185 C462,205 440,215 415,215 C375,215 348,185 348,145 C348,105 375,75 415,75 C440,75 460,88 472,105 L440,105 L440,140 L520,140 Z"/>
+        
+    <!-- Letter A -->
+    <path
+        android:fillColor="#EF4903"
+        android:pathData="M650,40 L710,210 L658,210 L642,165 L588,165 L572,210 L520,210 L580,40 Z M615,88 L598,132 L632,132 Z"/>
+        
+    <!-- Letter M -->
+    <path
+        android:fillColor="#EF4903"
+        android:pathData="M730,40 L785,150 L840,40 L890,40 L890,210 L845,210 L845,100 L798,195 L772,195 L725,100 L725,210 L680,210 L680,40 Z"/>
+</vector>

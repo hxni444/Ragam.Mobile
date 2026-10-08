@@ -1,0 +1,24 @@
+﻿<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="1080"
+    android:viewportHeight="1080">
+    
+    <!-- Background rounded square -->
+    <path
+        android:fillColor="#EF4903"
+        android:fillAlpha="0.16"
+        android:pathData="M270,30 L810,30 C942.5,30 1050,137.5 1050,270 L1050,810 C1050,942.5 942.5,1050 810,1050 L270,1050 C137.5,1050 30,942.5 30,810 L30,270 C30,137.5 137.5,30 270,30 Z"/>
+        
+    <!-- Specular border -->
+    <path
+        android:strokeColor="#EF4903"
+        android:strokeWidth="18"
+        android:strokeAlpha="0.4"
+        android:pathData="M270,30 L810,30 C942.5,30 1050,137.5 1050,270 L1050,810 C1050,942.5 942.5,1050 810,1050 L270,1050 C137.5,1050 30,942.5 30,810 L30,270 C30,137.5 137.5,30 270,30 Z"/>
+
+    <!-- Central R glyph matching desktop logo -->
+    <path
+        android:fillColor="#EF4903"
+        android:pathData="M310,250 L560,250 C680,250 760,330 760,440 C760,530 700,600 600,630 L770,830 L620,830 L480,660 L440,660 L440,830 L310,830 Z M440,370 L440,540 L550,540 C610,540 645,505 645,455 C645,405 610,370 550,370 Z"/>
+</vector>

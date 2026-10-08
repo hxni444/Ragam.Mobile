@@ -1,0 +1,54 @@
+# Built application files
+*.apk
+*.ap_
+*.aab
+*.dex
+*.class
+
+# Built binaries & build directories
+**/build/
+build/
+bin/
+gen/
+out/
+app/universal/release/
+
+# Gradle & Kotlin caches
+.gradle/
+.kotlin/
+gradle-app.setting
+!gradle-wrapper.jar
+
+# Local configuration
+local.properties
+.bundle/
+
+# Android Studio / IntelliJ IDEA
+*.iml
+.idea/
+.shelf/
+captures/
+*.ipr
+*.iws
+
+# OS-specific
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# Keystores and sensitive signing files
+*.jks
+*.keystore
+*.key
+*.p12
+*.properties
+!gradle.properties
+!crowdin.yml
+
+# Native build artifacts
+.externalNativeBuild/
+.cxx/
+
+# Log files
+*.log
