@@ -183,7 +183,7 @@ fun AboutScreen(
                     iconRes = R.drawable.github,
                     title = "GitHub Repository",
                     subtitle = "View Ragam Mobile source code",
-                    onClick = { uriHandler.openUri("https://github.com/hxni444/Ragam.Mobile") }
+                    onClick = { uriHandler.openUri("https://github.com/hxni444/Ragam") }
                 )
                 Spacer(Modifier.height(24.dp))
 
