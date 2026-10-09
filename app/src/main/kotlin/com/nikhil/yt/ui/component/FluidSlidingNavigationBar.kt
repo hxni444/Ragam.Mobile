@@ -1,9 +1,9 @@
 package com.nikhil.yt.ui.component
 
+import android.os.Build
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,12 +18,22 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kyant.backdrop.backdrops.rememberCanvasBackdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
 import com.nikhil.yt.ui.screens.Screens
 
 @Composable
@@ -36,21 +46,92 @@ fun FluidSlidingNavigationBar(
 ) {
     val selectedIndex = items.indexOfFirst { it.route == currentRoute }.coerceAtLeast(0)
 
-    val ragamAccent = Color(0xFFEF4903)
-    val trayBg = Color.White.copy(alpha = 0.12f)
-    val trayBorder = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
+    val isDark = pureBlack || MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val glassStyle = GlassEffectDefaults.navigationBarStyle(isDark, pureBlack)
     val pillShape = RoundedCornerShape(28.dp)
+    val density = LocalDensity.current
+
+    val supportsBackdrop = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    val supportsLens = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+
+    val backdrop = rememberCanvasBackdrop {
+        drawRect(
+            color = glassStyle.backgroundDimColor.copy(alpha = glassStyle.backgroundDimAlpha),
+            size = size
+        )
+    }
+
+    val ragamAccent = Color(0xFFEF4903)
 
     BoxWithConstraints(
         modifier = modifier
+            .shadow(
+                elevation = 16.dp,
+                shape = pillShape,
+                ambientColor = Color.Black.copy(alpha = 0.4f),
+                spotColor = Color.Black.copy(alpha = 0.5f)
+            )
             .clip(pillShape)
-            .border(trayBorder, pillShape)
-            .background(trayBg)
+            .then(
+                if (supportsBackdrop) {
+                    Modifier.drawBackdrop(
+                        backdrop = backdrop,
+                        shape = { pillShape },
+                        effects = {
+                            if (glassStyle.useVibrancy) vibrancy()
+                            blur(with(density) { glassStyle.blurRadius.toPx() })
+                            if (supportsLens && glassStyle.useLens) {
+                                lens(
+                                    with(density) { glassStyle.lensHeight.toPx() },
+                                    with(density) { glassStyle.lensAmount.toPx() }
+                                )
+                            }
+                        },
+                        onDrawSurface = {
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    colors = if (isDark) listOf(
+                                        if (pureBlack) Color(0xFF141418).copy(alpha = 0.82f) else Color(0xFF1C1C24).copy(alpha = 0.85f),
+                                        if (pureBlack) Color(0xFF08080C).copy(alpha = 0.90f) else Color(0xFF101015).copy(alpha = 0.92f)
+                                    ) else listOf(
+                                        Color.White.copy(alpha = 0.85f),
+                                        Color(0xFFF2F2F7).copy(alpha = 0.90f)
+                                    )
+                                )
+                            )
+                        }
+                    )
+                } else {
+                    Modifier.background(
+                        brush = Brush.verticalGradient(
+                            colors = if (isDark) listOf(
+                                if (pureBlack) Color(0xFF141418).copy(alpha = 0.94f) else Color(0xFF1C1C24).copy(alpha = 0.95f),
+                                if (pureBlack) Color(0xFF08080C).copy(alpha = 0.97f) else Color(0xFF101015).copy(alpha = 0.98f)
+                            ) else listOf(
+                                Color.White.copy(alpha = 0.95f),
+                                Color(0xFFF2F2F7).copy(alpha = 0.98f)
+                            )
+                        )
+                    )
+                }
+            )
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    colors = if (isDark) listOf(
+                        Color.White.copy(alpha = 0.24f),
+                        Color.White.copy(alpha = 0.08f)
+                    ) else listOf(
+                        Color.Black.copy(alpha = 0.14f),
+                        Color.Black.copy(alpha = 0.05f)
+                    )
+                ),
+                shape = pillShape
+            )
             .fillMaxWidth()
             .height(80.dp)
     ) {
         val tabWidth = maxWidth / items.size
-
         val pillWidth = 52.dp
         val pillHeight = 32.dp
 
@@ -62,16 +143,19 @@ fun FluidSlidingNavigationBar(
             ),
             label = "PillSlider"
         )
+
         Box(
             modifier = Modifier
                 .offset(x = indicatorOffset, y = 14.dp)
                 .width(pillWidth)
                 .height(pillHeight)
+                .shadow(elevation = 6.dp, shape = CircleShape, ambientColor = ragamAccent, spotColor = ragamAccent)
                 .background(
                     color = ragamAccent,
                     shape = CircleShape
                 )
         )
+
         Row(
             modifier = Modifier.fillMaxSize(),
             verticalAlignment = Alignment.Top
@@ -95,7 +179,7 @@ fun FluidSlidingNavigationBar(
                     Icon(
                         painter = painterResource(id = if (isSelected) item.iconIdActive else item.iconIdInactive),
                         contentDescription = stringResource(id = item.titleId),
-                        tint = if (isSelected) Color.White else Color.White.copy(alpha = 0.65f),
+                        tint = if (isSelected) Color.White else if (isDark) Color.White.copy(alpha = 0.65f) else Color.Black.copy(alpha = 0.65f),
                         modifier = Modifier.size(24.dp)
                     )
 
@@ -104,9 +188,10 @@ fun FluidSlidingNavigationBar(
                     Text(
                         text = stringResource(id = item.titleId),
                         fontSize = 12.sp,
+                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        color = if (isSelected) Color.White else Color.White.copy(alpha = 0.65f)
+                        color = if (isSelected) (if (isDark) Color.White else Color.Black) else if (isDark) Color.White.copy(alpha = 0.65f) else Color.Black.copy(alpha = 0.65f)
                     )
                 }
             }
