@@ -105,11 +105,11 @@ fun <E> ChipsRow(
                 shape = RoundedCornerShape(16.dp),
                 border = androidx.compose.foundation.BorderStroke(
                     1.dp, 
-                    if (isSelected) Color.White.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.15f)
+                    if (isSelected) Color.White.copy(alpha = 0.40f) else Color.White.copy(alpha = 0.15f)
                 ),
                 colors = FilterChipDefaults.filterChipColors(
                     containerColor = Color.White.copy(alpha = 0.08f),
-                    selectedContainerColor = Color.White.copy(alpha = 0.20f),
+                    selectedContainerColor = Color.White.copy(alpha = 0.22f),
                     labelColor = Color(0xFFD0D0D0),
                     selectedLabelColor = Color.White,
                     iconColor = Color(0xFFD0D0D0),
@@ -229,7 +229,7 @@ fun <Int> ChoiceChipsRow(
                         selected = currentValue == value,
                         colors = FilterChipDefaults.filterChipColors(
                             containerColor = Color.White.copy(alpha = 0.08f),
-                            selectedContainerColor = Color.White.copy(alpha = 0.20f),
+                            selectedContainerColor = Color.White.copy(alpha = 0.22f),
                             labelColor = Color(0xFFD0D0D0),
                             selectedLabelColor = Color.White
                         ),
@@ -237,7 +237,7 @@ fun <Int> ChoiceChipsRow(
                         shape = RoundedCornerShape(16.dp),
                         border = androidx.compose.foundation.BorderStroke(
                             1.dp,
-                            if (currentValue == value) Color.White.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.15f)
+                            if (currentValue == value) Color.White.copy(alpha = 0.40f) else Color.White.copy(alpha = 0.15f)
                         )
                     )
                 }

@@ -64,6 +64,16 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import android.widget.Toast
+import coil3.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
+import com.nikhil.yt.constants.InnerTubeCookieKey
+import com.nikhil.yt.innertube.utils.parseCookieString
+import com.nikhil.yt.App
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
@@ -611,9 +621,18 @@ class MainActivity : ComponentActivity() {
                         listOf(
                             Screens.Home.route,
                             Screens.Stats.route,
+                            Screens.Search.route,
                             Screens.History.route,
                             Screens.Library.route,
                         )
+
+                    val (innerTubeCookie, onInnerTubeCookieChange) = rememberPreference(InnerTubeCookieKey, "")
+                    val isLoggedIn = remember(innerTubeCookie) {
+                        "SAPISID" in parseCookieString(innerTubeCookie)
+                    }
+                    val accountImageUrl by homeViewModel.accountImageUrl.collectAsState()
+                    val accountName by homeViewModel.accountName.collectAsState()
+                    var accountMenuExpanded by remember { mutableStateOf(false) }
 
                     val (query, onQueryChange) =
                         rememberSaveable(stateSaver = TextFieldValue.Saver) {
@@ -1110,18 +1129,139 @@ class MainActivity : ComponentActivity() {
                                                 },
 
                                                 actions = {
-                                                    IconButton(onClick = { onActiveChange(true) }) {
-                                                        Icon(
-                                                            painter = painterResource(R.drawable.search),
-                                                            contentDescription = stringResource(R.string.search)
-                                                        )
+                                                    if (isLoggedIn) {
+                                                        Box {
+                                                            IconButton(
+                                                                onClick = { accountMenuExpanded = true },
+                                                                modifier = Modifier.size(38.dp)
+                                                            ) {
+                                                                if (!accountImageUrl.isNullOrBlank()) {
+                                                                    AsyncImage(
+                                                                        model = accountImageUrl,
+                                                                        contentDescription = accountName ?: "Account",
+                                                                        contentScale = ContentScale.Crop,
+                                                                        modifier = Modifier
+                                                                            .size(28.dp)
+                                                                            .clip(CircleShape)
+                                                                            .border(1.dp, Color.White.copy(alpha = 0.35f), CircleShape)
+                                                                    )
+                                                                } else {
+                                                                    Box(
+                                                                        modifier = Modifier
+                                                                            .size(28.dp)
+                                                                            .clip(CircleShape)
+                                                                            .background(Color.White.copy(alpha = 0.15f))
+                                                                            .border(1.dp, Color.White.copy(alpha = 0.35f), CircleShape),
+                                                                        contentAlignment = Alignment.Center
+                                                                    ) {
+                                                                        Icon(
+                                                                            painter = painterResource(R.drawable.artist),
+                                                                            contentDescription = "Account",
+                                                                            tint = Color.White,
+                                                                            modifier = Modifier.size(16.dp)
+                                                                        )
+                                                                    }
+                                                                }
+                                                            }
+
+                                                            DropdownMenu(
+                                                                expanded = accountMenuExpanded,
+                                                                onDismissRequest = { accountMenuExpanded = false },
+                                                                modifier = Modifier
+                                                                    .background(Color(0xFF161618))
+                                                                    .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(16.dp))
+                                                            ) {
+                                                                if (!accountName.isNullOrBlank() && accountName != "Guest") {
+                                                                    DropdownMenuItem(
+                                                                        text = {
+                                                                            Column {
+                                                                                Text(
+                                                                                    text = accountName ?: "",
+                                                                                    style = MaterialTheme.typography.titleMedium,
+                                                                                    fontWeight = FontWeight.Bold,
+                                                                                    color = Color.White
+                                                                                )
+                                                                                Text(
+                                                                                    text = "Logged in",
+                                                                                    style = MaterialTheme.typography.bodySmall,
+                                                                                    color = Color(0xFFAAAAAA)
+                                                                                )
+                                                                            }
+                                                                        },
+                                                                        onClick = {
+                                                                            accountMenuExpanded = false
+                                                                            navController.navigate("settings/account")
+                                                                        }
+                                                                    )
+                                                                    HorizontalDivider(
+                                                                        color = Color.White.copy(alpha = 0.12f),
+                                                                        modifier = Modifier.padding(vertical = 4.dp)
+                                                                    )
+                                                                }
+
+                                                                DropdownMenuItem(
+                                                                    text = {
+                                                                        Text(
+                                                                            text = "Account Settings",
+                                                                            color = Color.White
+                                                                        )
+                                                                    },
+                                                                    leadingIcon = {
+                                                                        Icon(
+                                                                            painter = painterResource(R.drawable.artist),
+                                                                            contentDescription = null,
+                                                                            tint = Color.White,
+                                                                            modifier = Modifier.size(20.dp)
+                                                                        )
+                                                                    },
+                                                                    onClick = {
+                                                                        accountMenuExpanded = false
+                                                                        navController.navigate("settings/account")
+                                                                    }
+                                                                )
+
+                                                                DropdownMenuItem(
+                                                                    text = {
+                                                                        Text(
+                                                                            text = "Logout",
+                                                                            color = Color(0xFFFF5252),
+                                                                            fontWeight = FontWeight.SemiBold
+                                                                        )
+                                                                    },
+                                                                    leadingIcon = {
+                                                                        Icon(
+                                                                            painter = painterResource(R.drawable.logout),
+                                                                            contentDescription = null,
+                                                                            tint = Color(0xFFFF5252),
+                                                                            modifier = Modifier.size(20.dp)
+                                                                        )
+                                                                    },
+                                                                    onClick = {
+                                                                        accountMenuExpanded = false
+                                                                        onInnerTubeCookieChange("")
+                                                                        App.forgetAccount(this@MainActivity)
+                                                                        Toast.makeText(this@MainActivity, "Logged out", Toast.LENGTH_SHORT).show()
+                                                                    }
+                                                                )
+                                                            }
+                                                        }
+                                                    } else {
+                                                        IconButton(onClick = { navController.navigate("login") }) {
+                                                            Icon(
+                                                                painter = painterResource(R.drawable.login),
+                                                                contentDescription = "Login",
+                                                                tint = Color.White,
+                                                                modifier = Modifier.size(22.dp)
+                                                            )
+                                                        }
                                                     }
 
                                                     IconButton(onClick = { navController.navigate("settings") }) {
                                                         Icon(
                                                             painter = painterResource(R.drawable.settings),
                                                             contentDescription = "Settings",
-                                                            modifier = Modifier.size(24.dp)
+                                                            modifier = Modifier.size(24.dp),
+                                                            tint = Color.White
                                                         )
                                                     }
                                                 },

@@ -35,6 +35,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.pullToRefresh
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.Text
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -178,12 +179,12 @@ fun LibraryArtistsScreen(
 
             Spacer(Modifier.weight(1f))
 
-            artists?.let { artists ->
+            artists?.let { list: List<com.nikhil.yt.db.entities.Artist> ->
                 Text(
                     text = pluralStringResource(
                         R.plurals.n_artist,
-                        artists.size,
-                        artists.size
+                        list.size,
+                        list.size
                     ),
                     style = MaterialTheme.typography.titleSmall,
                     color = Color(0xFF9E9E9E),

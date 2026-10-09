@@ -29,6 +29,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -389,6 +390,7 @@ fun LibraryMixScreen(
                     Icon(
                         painter = painterResource(if (reorderEnabled) R.drawable.lock_open else R.drawable.lock),
                         contentDescription = null,
+                        tint = Color.White,
                     )
                 }
             }
@@ -408,6 +410,7 @@ fun LibraryMixScreen(
                         },
                     ),
                     contentDescription = null,
+                    tint = Color.White,
                 )
             }
         }

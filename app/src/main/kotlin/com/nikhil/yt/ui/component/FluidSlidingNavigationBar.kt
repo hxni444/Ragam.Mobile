@@ -125,7 +125,7 @@ fun FluidSlidingNavigationBar(
             .height(80.dp)
     ) {
         val tabWidth = maxWidth / items.size
-        val pillWidth = 52.dp
+        val pillWidth = 46.dp
         val pillHeight = 32.dp
 
         val indicatorOffset by animateDpAsState(
@@ -137,14 +137,22 @@ fun FluidSlidingNavigationBar(
             label = "PillSlider"
         )
 
+        val indicatorColor = ragamAccent
+        val indicatorBorder = ragamAccent.copy(alpha = 0.6f)
+
         Box(
             modifier = Modifier
                 .offset(x = indicatorOffset, y = 14.dp)
                 .width(pillWidth)
                 .height(pillHeight)
-                .shadow(elevation = 6.dp, shape = CircleShape, ambientColor = ragamAccent, spotColor = ragamAccent)
+                .shadow(elevation = 6.dp, shape = CircleShape, spotColor = ragamAccent, ambientColor = ragamAccent)
                 .background(
-                    color = ragamAccent,
+                    color = indicatorColor,
+                    shape = CircleShape
+                )
+                .border(
+                    width = 1.dp,
+                    color = indicatorBorder,
                     shape = CircleShape
                 )
         )

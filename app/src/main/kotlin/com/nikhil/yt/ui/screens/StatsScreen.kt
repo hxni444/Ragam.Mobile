@@ -43,6 +43,9 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -408,8 +411,16 @@ fun StatsScreen(
             }
 
             item(key = "mostPlayedSongsHeader") {
+                val songsTitle = buildAnnotatedString {
+                    withStyle(SpanStyle(color = Color.White, fontWeight = FontWeight.Bold)) {
+                        append("${mostPlayedSongsStats.size} ")
+                    }
+                    withStyle(SpanStyle(color = Color(0xFFEF4903), fontWeight = FontWeight.Bold)) {
+                        append(stringResource(id = R.string.songs))
+                    }
+                }
                 NavigationTitle(
-                    title = "${mostPlayedSongsStats.size} ${stringResource(id = R.string.songs)}",
+                    title = songsTitle,
                     modifier = Modifier.animateItem(),
                 )
             }
@@ -468,8 +479,16 @@ fun StatsScreen(
             }
 
             item(key = "mostPlayedArtists") {
+                val artistsTitle = buildAnnotatedString {
+                    withStyle(SpanStyle(color = Color.White, fontWeight = FontWeight.Bold)) {
+                        append("${mostPlayedArtists.size} ")
+                    }
+                    withStyle(SpanStyle(color = Color(0xFFEF4903), fontWeight = FontWeight.Bold)) {
+                        append(stringResource(id = R.string.artists))
+                    }
+                }
                 NavigationTitle(
-                    title = "${mostPlayedArtists.size} ${stringResource(id = R.string.artists)}",
+                    title = artistsTitle,
                     modifier = Modifier.animateItem(),
                 )
             }
@@ -522,8 +541,16 @@ fun StatsScreen(
             }
 
             item(key = "mostPlayedAlbums") {
+                val albumsTitle = buildAnnotatedString {
+                    withStyle(SpanStyle(color = Color.White, fontWeight = FontWeight.Bold)) {
+                        append("${mostPlayedAlbums.size} ")
+                    }
+                    withStyle(SpanStyle(color = Color(0xFFEF4903), fontWeight = FontWeight.Bold)) {
+                        append(stringResource(id = R.string.albums))
+                    }
+                }
                 NavigationTitle(
-                    title = "${mostPlayedAlbums.size} ${stringResource(id = R.string.albums)}",
+                    title = albumsTitle,
                     modifier = Modifier.animateItem(),
                 )
 

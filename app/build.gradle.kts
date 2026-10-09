@@ -81,11 +81,17 @@ android {
     signingConfigs {
         create("release") {
             val keystoreFile = file("keystore/release.keystore")
-            if(keystoreFile.exists()) {
+            if(keystoreFile.exists() && System.getenv("STORE_PASSWORD") != null) {
                 storeFile = keystoreFile
                 storePassword = System.getenv("STORE_PASSWORD")
                 keyAlias = System.getenv("KEY_ALIAS")
                 keyPassword = System.getenv("KEY_PASSWORD")
+            } else {
+                val debugKeystore = signingConfigs.getByName("debug")
+                storeFile = debugKeystore.storeFile
+                storePassword = debugKeystore.storePassword
+                keyAlias = debugKeystore.keyAlias
+                keyPassword = debugKeystore.keyPassword
             }
         }
     }

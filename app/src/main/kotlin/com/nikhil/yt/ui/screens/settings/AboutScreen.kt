@@ -182,8 +182,8 @@ fun AboutScreen(
                 AboutItemCard(
                     iconRes = R.drawable.github,
                     title = "GitHub Repository",
-                    subtitle = "View original source code",
-                    onClick = { uriHandler.openUri("https://github.com/nikhilvishwakarma00/Velune") }
+                    subtitle = "View Ragam Mobile source code",
+                    onClick = { uriHandler.openUri("https://github.com/hxni444/Ragam.Mobile") }
                 )
                 Spacer(Modifier.height(24.dp))
 
@@ -314,25 +314,30 @@ fun AboutItemCard(
     }
 }
 fun launchUpiPayment(context: android.content.Context, upiId: String, payeeName: String) {
-    val note = "Support for Ragam Mobile"
+    val note = "Support Ragam Mobile"
     val uriString = "upi://pay?pa=$upiId&pn=${android.net.Uri.encode(payeeName)}&tn=${android.net.Uri.encode(note)}&cu=INR"
     val uri = android.net.Uri.parse(uriString)
     val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, uri)
 
-    val chooser = android.content.Intent.createChooser(intent, "Pay with...")
+    try {
+        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+        val clip = android.content.ClipData.newPlainText("UPI ID", upiId)
+        clipboard.setPrimaryClip(clip)
+    } catch (_: Exception) {}
 
     try {
+        val chooser = android.content.Intent.createChooser(intent, "Pay with UPI")
         context.startActivity(chooser)
     } catch (e: android.content.ActivityNotFoundException) {
-        android.widget.Toast.makeText(context, "No UPI app found on this device.", android.widget.Toast.LENGTH_SHORT).show()
+        android.widget.Toast.makeText(context, "UPI ID copied to clipboard: $upiId", android.widget.Toast.LENGTH_LONG).show()
     }
 }
 
 @Composable
 fun SupportDeveloperCard(modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    val myUpiId = "nikhilvishwakarma9631@oksbi"
-    val myName = "Nikhil"
+    val myUpiId = "hanialziya4@okicici"
+    val myName = "Hani"
 
     Card(
         modifier = modifier

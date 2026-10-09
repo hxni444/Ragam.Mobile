@@ -172,8 +172,7 @@ private fun GlassNavigationBarContent(
                         contentDescription = null,
                         modifier = Modifier.size(24.dp),
                         tint = if (isSelected) {
-                            if (pureBlack) Color.White
-                            else MaterialTheme.colorScheme.primary
+                            Color.White
                         } else {
                             if (pureBlack) Color.White.copy(alpha = 0.5f)
                             else if (isDark) Color.White.copy(alpha = 0.6f)
@@ -189,8 +188,7 @@ private fun GlassNavigationBarContent(
                             overflow = TextOverflow.Ellipsis,
                             fontSize = 11.sp,
                             color = if (isSelected) {
-                                if (pureBlack) Color.White
-                                else MaterialTheme.colorScheme.primary
+                                Color.White
                             } else {
                                 if (pureBlack) Color.White.copy(alpha = 0.5f)
                                 else if (isDark) Color.White.copy(alpha = 0.6f)
@@ -231,7 +229,7 @@ private fun RowScope.GlassNavigationBarItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        val indicatorColor = if (isDark) Color.White else Color.Black
+        val indicatorColor = Color(0xFFEF4903)
 
         Box(
             modifier = Modifier
@@ -239,7 +237,7 @@ private fun RowScope.GlassNavigationBarItem(
                 .drawBehind {
                     if (selectedIndicatorAlpha > 0f) {
                         drawRoundRect(
-                            color = indicatorColor.copy(alpha = selectedIndicatorAlpha),
+                            color = indicatorColor.copy(alpha = selectedIndicatorAlpha * 3.5f),
                             cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx()),
                         )
                     }

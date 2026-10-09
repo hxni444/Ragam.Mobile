@@ -150,7 +150,8 @@ inline fun ListItem(
     noinline subtitle: (@Composable RowScope.() -> Unit)? = null,
     thumbnailContent: @Composable () -> Unit,
     trailingContent: @Composable RowScope.() -> Unit = {},
-    isActive: Boolean = false
+    isActive: Boolean = false,
+    titleColor: Color = Color.White
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -163,7 +164,7 @@ inline fun ListItem(
         Column(Modifier.weight(1f).padding(horizontal = 6.dp)) {
             Text(
                 text = title, fontSize = 14.sp, fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = titleColor,
                 maxLines = 1, overflow = TextOverflow.Ellipsis
             )
             if (subtitle != null) Row(verticalAlignment = Alignment.CenterVertically) { subtitle() }
@@ -180,11 +181,13 @@ fun ListItem(
     badges: @Composable RowScope.() -> Unit = {},
     thumbnailContent: @Composable () -> Unit,
     trailingContent: @Composable RowScope.() -> Unit = {},
-    isActive: Boolean = false
+    isActive: Boolean = false,
+    titleColor: Color = Color.White
 ) = ListItem(
     title = title,
     modifier = modifier,
     isActive = isActive,
+    titleColor = titleColor,
     subtitle = {
         badges()
         if (!subtitle.isNullOrEmpty()) {
@@ -586,6 +589,7 @@ fun PlaylistListItem(
     trailingContent: @Composable RowScope.() -> Unit = {}
 ) = ListItem(
     title = playlist.playlist.name,
+    titleColor = if (autoPlaylist) Color(0xFFEF4903) else Color.White,
     subtitle = if (autoPlaylist) {
         ""
     } else {
@@ -706,7 +710,7 @@ fun OverlayPlaylistListItem(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = playlist.playlist.name,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = if (autoPlaylist) Color(0xFFEF4903) else MaterialTheme.colorScheme.onSurface,
                         style = MaterialTheme.typography.titleMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -761,6 +765,7 @@ fun PlaylistGridItem(
             text = playlist.playlist.name,
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Bold,
+            color = if (autoPlaylist) Color(0xFFEF4903) else Color.White,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.basicMarquee().fillMaxWidth()
