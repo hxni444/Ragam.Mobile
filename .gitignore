@@ -44,6 +44,7 @@ desktop.ini
 *.p12
 *.properties
 !gradle.properties
+!gradle-wrapper.properties
 !crowdin.yml
 
 # Native build artifacts
