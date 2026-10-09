@@ -32,7 +32,6 @@ import androidx.compose.ui.unit.sp
 import com.kyant.backdrop.backdrops.rememberCanvasBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
-import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.effects.vibrancy
 import com.nikhil.yt.ui.screens.Screens
 
@@ -44,7 +43,8 @@ fun FluidSlidingNavigationBar(
     pureBlack: Boolean,
     onTabSelected: (Screens) -> Unit
 ) {
-    val selectedIndex = items.indexOfFirst { it.route == currentRoute }.coerceAtLeast(0)
+    val targetIndex = items.indexOfFirst { it.route == currentRoute }.coerceAtLeast(0)
+    var eagerSelectedIndex by remember(currentRoute) { mutableIntStateOf(targetIndex) }
 
     val isDark = pureBlack || MaterialTheme.colorScheme.background.luminance() < 0.5f
     val glassStyle = GlassEffectDefaults.navigationBarStyle(isDark, pureBlack)
@@ -52,7 +52,6 @@ fun FluidSlidingNavigationBar(
     val density = LocalDensity.current
 
     val supportsBackdrop = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-    val supportsLens = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
 
     val backdrop = rememberCanvasBackdrop {
         drawRect(
@@ -79,23 +78,17 @@ fun FluidSlidingNavigationBar(
                         shape = { pillShape },
                         effects = {
                             if (glassStyle.useVibrancy) vibrancy()
-                            blur(with(density) { glassStyle.blurRadius.toPx() })
-                            if (supportsLens && glassStyle.useLens) {
-                                lens(
-                                    with(density) { glassStyle.lensHeight.toPx() },
-                                    with(density) { glassStyle.lensAmount.toPx() }
-                                )
-                            }
+                            blur(with(density) { 28.dp.toPx() })
                         },
                         onDrawSurface = {
                             drawRect(
                                 brush = Brush.verticalGradient(
                                     colors = if (isDark) listOf(
-                                        if (pureBlack) Color(0xFF141418).copy(alpha = 0.82f) else Color(0xFF1C1C24).copy(alpha = 0.85f),
-                                        if (pureBlack) Color(0xFF08080C).copy(alpha = 0.90f) else Color(0xFF101015).copy(alpha = 0.92f)
+                                        if (pureBlack) Color(0xFF141418).copy(alpha = 0.84f) else Color(0xFF1C1C24).copy(alpha = 0.86f),
+                                        if (pureBlack) Color(0xFF08080C).copy(alpha = 0.92f) else Color(0xFF101015).copy(alpha = 0.94f)
                                     ) else listOf(
-                                        Color.White.copy(alpha = 0.85f),
-                                        Color(0xFFF2F2F7).copy(alpha = 0.90f)
+                                        Color.White.copy(alpha = 0.88f),
+                                        Color(0xFFF2F2F7).copy(alpha = 0.92f)
                                     )
                                 )
                             )
@@ -136,10 +129,10 @@ fun FluidSlidingNavigationBar(
         val pillHeight = 32.dp
 
         val indicatorOffset by animateDpAsState(
-            targetValue = (tabWidth * selectedIndex) + ((tabWidth - pillWidth) / 2),
+            targetValue = (tabWidth * eagerSelectedIndex) + ((tabWidth - pillWidth) / 2),
             animationSpec = spring(
                 dampingRatio = Spring.DampingRatioNoBouncy,
-                stiffness = Spring.StiffnessLow
+                stiffness = Spring.StiffnessMedium
             ),
             label = "PillSlider"
         )
@@ -161,7 +154,7 @@ fun FluidSlidingNavigationBar(
             verticalAlignment = Alignment.Top
         ) {
             items.forEachIndexed { index, item ->
-                val isSelected = selectedIndex == index
+                val isSelected = eagerSelectedIndex == index
 
                 Column(
                     modifier = Modifier
@@ -170,7 +163,10 @@ fun FluidSlidingNavigationBar(
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
-                            onClick = { onTabSelected(item) }
+                            onClick = {
+                                eagerSelectedIndex = index
+                                onTabSelected(item)
+                            }
                         ),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {

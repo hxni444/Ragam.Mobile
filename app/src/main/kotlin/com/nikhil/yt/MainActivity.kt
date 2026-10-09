@@ -1403,85 +1403,55 @@ class MainActivity : ComponentActivity() {
                                         else -> Screens.Home
                                     }.route,
                                     enterTransition = {
-                                        val initialIndex = navigationItems.indexOfFirst { it.route == initialState.destination.route }
-                                        val targetIndex = navigationItems.indexOfFirst { it.route == targetState.destination.route }
-
                                         if (initialState.destination.route in topLevelScreens && targetState.destination.route in topLevelScreens) {
-                                            val direction = if (targetIndex > initialIndex) {
-                                                AnimatedContentTransitionScope.SlideDirection.Left
-                                            } else {
-                                                AnimatedContentTransitionScope.SlideDirection.Right
-                                            }
-                                            slideIntoContainer(
-                                                towards = direction,
-                                                animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)
+                                            androidx.compose.animation.fadeIn(
+                                                animationSpec = androidx.compose.animation.core.tween(durationMillis = 200, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+                                            ) + androidx.compose.animation.scaleIn(
+                                                initialScale = 0.98f,
+                                                animationSpec = androidx.compose.animation.core.tween(durationMillis = 200, easing = androidx.compose.animation.core.FastOutSlowInEasing)
                                             )
                                         } else {
-                                            fadeIn(tween(300)) + slideInHorizontally(
-                                                animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)
-                                            ) { it / 2 }
+                                            androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(250)) + androidx.compose.animation.slideInHorizontally(
+                                                animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow)
+                                            ) { it / 3 }
                                         }
                                     },
                                     exitTransition = {
-                                        val initialIndex = navigationItems.indexOfFirst { it.route == initialState.destination.route }
-                                        val targetIndex = navigationItems.indexOfFirst { it.route == targetState.destination.route }
-
                                         if (initialState.destination.route in topLevelScreens && targetState.destination.route in topLevelScreens) {
-                                            val direction = if (targetIndex > initialIndex) {
-                                                AnimatedContentTransitionScope.SlideDirection.Left
-                                            } else {
-                                                AnimatedContentTransitionScope.SlideDirection.Right
-                                            }
-                                            slideOutOfContainer(
-                                                towards = direction,
-                                                animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)
+                                            androidx.compose.animation.fadeOut(
+                                                animationSpec = androidx.compose.animation.core.tween(durationMillis = 150, easing = androidx.compose.animation.core.FastOutLinearInEasing)
                                             )
                                         } else {
-                                            fadeOut(tween(300)) + slideOutHorizontally(
-                                                animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)
-                                            ) { -it / 2 }
+                                            androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(200)) + androidx.compose.animation.slideOutHorizontally(
+                                                animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow)
+                                            ) { -it / 3 }
                                         }
                                     },
-                                     popEnterTransition = {
-                                         val initialIndex = navigationItems.indexOfFirst { it.route == initialState.destination.route }
-                                         val targetIndex = navigationItems.indexOfFirst { it.route == targetState.destination.route }
-
-                                         if (initialState.destination.route in topLevelScreens && targetState.destination.route in topLevelScreens) {
-                                             val direction = if (targetIndex > initialIndex) {
-                                                 AnimatedContentTransitionScope.SlideDirection.Left
-                                             } else {
-                                                 AnimatedContentTransitionScope.SlideDirection.Right
-                                             }
-                                             slideIntoContainer(
-                                                 towards = direction,
-                                                 animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)
-                                             )
-                                         } else {
-                                             fadeIn(tween(300)) + slideInHorizontally(
-                                                 animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)
-                                             ) { -it / 2 }
-                                         }
-                                     },
-                                     popExitTransition = {
-                                         val initialIndex = navigationItems.indexOfFirst { it.route == initialState.destination.route }
-                                         val targetIndex = navigationItems.indexOfFirst { it.route == targetState.destination.route }
-
-                                         if (initialState.destination.route in topLevelScreens && targetState.destination.route in topLevelScreens) {
-                                             val direction = if (targetIndex > initialIndex) {
-                                                 AnimatedContentTransitionScope.SlideDirection.Left
-                                             } else {
-                                                 AnimatedContentTransitionScope.SlideDirection.Right
-                                             }
-                                             slideOutOfContainer(
-                                                 towards = direction,
-                                                 animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)
-                                             )
-                                         } else {
-                                             fadeOut(tween(300)) + slideOutHorizontally(
-                                                 animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)
-                                             ) { it / 2 }
-                                         }
-                                     },
+                                    popEnterTransition = {
+                                        if (initialState.destination.route in topLevelScreens && targetState.destination.route in topLevelScreens) {
+                                            androidx.compose.animation.fadeIn(
+                                                animationSpec = androidx.compose.animation.core.tween(durationMillis = 200, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+                                            ) + androidx.compose.animation.scaleIn(
+                                                initialScale = 0.98f,
+                                                animationSpec = androidx.compose.animation.core.tween(durationMillis = 200, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+                                            )
+                                        } else {
+                                            androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(250)) + androidx.compose.animation.slideInHorizontally(
+                                                animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow)
+                                            ) { -it / 3 }
+                                        }
+                                    },
+                                    popExitTransition = {
+                                        if (initialState.destination.route in topLevelScreens && targetState.destination.route in topLevelScreens) {
+                                            androidx.compose.animation.fadeOut(
+                                                animationSpec = androidx.compose.animation.core.tween(durationMillis = 150, easing = androidx.compose.animation.core.FastOutLinearInEasing)
+                                            )
+                                        } else {
+                                            androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(200)) + androidx.compose.animation.slideOutHorizontally(
+                                                animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow)
+                                            ) { it / 3 }
+                                        }
+                                    },
                                     modifier = Modifier.nestedScroll(
                                         if (navigationItems.fastAny { it.route == navBackStackEntry?.destination?.route } ||
                                             navBackStackEntry?.destination?.route?.startsWith("search/") == true
