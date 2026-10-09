@@ -300,7 +300,7 @@ fun HomeScreen(
                 contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues()
             ) {
                 if (showHomeCategoryChips) {
-                    item {
+                    item(key = "home_chips") {
                         ChipsRow(
                             chips = homePage?.chips.orEmpty().map { it to it.title },
                             currentValue = selectedChip,
@@ -312,146 +312,45 @@ fun HomeScreen(
                 }
 
                 quickPicks?.takeIf { it.isNotEmpty() }?.let { picks ->
-            /*
-                item {
-                    NavigationTitle(
-                        title = stringResource(R.string.quick_picks),
-                        modifier = Modifier.animateItem()
-                    )
-                }
-            */
-
-                item {
-                    QuickPicksSection(
-                        quickPicks = picks,
-                        mediaMetadata = mediaMetadata,
-                        isPlaying = isPlaying,
-                        navController = navController,
-                        playerConnection = playerConnection,
-                        menuState = menuState,
-                        haptic = haptic
-                    )
-                }
-            }
-
-
-            quickPicks?.takeIf { it.isNotEmpty() }?.let { picks ->
-                item {
-                    QuickPicksListSection(
-                        quickPicks = picks,
-                        mediaMetadata = mediaMetadata,
-                        isPlaying = isPlaying,
-                        navController = navController,
-                        playerConnection = playerConnection,
-                        menuState = menuState,
-                        haptic = haptic,
-                        modifier = Modifier.animateItem()
-                    )
-                }
-            }
-
-            keepListening?.takeIf { it.isNotEmpty() }?.let { items ->
-                item {
-                    NavigationTitle(
-                        title = stringResource(R.string.keep_listening),
-                        modifier = Modifier.animateItem()
-                    )
+                    item(key = "quick_picks_section") {
+                        QuickPicksSection(
+                            quickPicks = picks,
+                            mediaMetadata = mediaMetadata,
+                            isPlaying = isPlaying,
+                            navController = navController,
+                            playerConnection = playerConnection,
+                            menuState = menuState,
+                            haptic = haptic
+                        )
+                    }
                 }
 
-                item {
-                    KeepListeningSection(
-                        keepListening = items,
-                        mediaMetadata = mediaMetadata,
-                        isPlaying = isPlaying,
-                        navController = navController,
-                        playerConnection = playerConnection,
-                        menuState = menuState,
-                        haptic = haptic,
-                        scope = scope
-                    )
-                }
-            }
-
-            AccountPlaylistsContainer(
-                viewModel = viewModel,
-                accountName = accountName,
-                accountImageUrl = url,
-                mediaMetadata = mediaMetadata,
-                isPlaying = isPlaying,
-                navController = navController,
-                playerConnection = playerConnection,
-                menuState = menuState,
-                haptic = haptic,
-                scope = scope
-            )
-
-            forgottenFavorites?.takeIf { it.isNotEmpty() }?.let { favorites ->
-                item {
-                    NavigationTitle(
-                        title = stringResource(R.string.forgotten_favorites),
-                        modifier = Modifier.animateItem()
-                    )
-                }
-
-                item {
-                    ForgottenFavoritesSection(
-                        forgottenFavorites = favorites,
-                        mediaMetadata = mediaMetadata,
-                        isPlaying = isPlaying,
-                        horizontalLazyGridItemWidth = horizontalLazyGridItemWidth,
-                        lazyGridState = forgottenFavoritesLazyGridState,
-                        snapLayoutInfoProvider = forgottenFavoritesSnapLayoutInfoProvider,
-                        navController = navController,
-                        playerConnection = playerConnection,
-                        menuState = menuState,
-                        haptic = haptic
-                    )
-                }
-            }
-
-            SimilarRecommendationsContainer(
-                viewModel = viewModel,
-                mediaMetadata = mediaMetadata,
-                isPlaying = isPlaying,
-                navController = navController,
-                playerConnection = playerConnection,
-                menuState = menuState,
-                haptic = haptic,
-                scope = scope
-            )
-
-            homePage?.sections?.forEach { section ->
-                val isCommunity = section.title?.contains("community", ignoreCase = true) == true ||
-                    section.title?.contains("From the", ignoreCase = true) == true ||
-                    section.title?.contains("Trending", ignoreCase = true) == true &&
-                    section.items.all { it is com.nikhil.yt.innertube.models.PlaylistItem }
-
-                if (isCommunity) {
-                    item {
-                        CommunityPlaylistsSection(
-                            section = section,
+                quickPicks?.takeIf { it.isNotEmpty() }?.let { picks ->
+                    item(key = "quick_picks_list") {
+                        QuickPicksListSection(
+                            quickPicks = picks,
                             mediaMetadata = mediaMetadata,
                             isPlaying = isPlaying,
                             navController = navController,
                             playerConnection = playerConnection,
                             menuState = menuState,
                             haptic = haptic,
-                            scope = scope,
                             modifier = Modifier.animateItem()
                         )
                     }
-                } else {
-                    item {
-                        HomePageSectionTitle(
-                            section = section,
-                            navController = navController,
+                }
+
+                keepListening?.takeIf { it.isNotEmpty() }?.let { items ->
+                    item(key = "keep_listening_title") {
+                        NavigationTitle(
+                            title = stringResource(R.string.keep_listening),
                             modifier = Modifier.animateItem()
                         )
                     }
 
-                    item {
-                        HomePageSectionContent(
-                            section = section,
+                    item(key = "keep_listening_section") {
+                        KeepListeningSection(
+                            keepListening = items,
                             mediaMetadata = mediaMetadata,
                             isPlaying = isPlaying,
                             navController = navController,
@@ -462,50 +361,143 @@ fun HomeScreen(
                         )
                     }
                 }
-            }
 
-            if (isLoading || homePage?.continuation != null && homePage?.sections?.isNotEmpty() == true) {
-                item {
-                    HomeLoadingShimmer(modifier = Modifier.animateItem())
-                }
-            }
+                AccountPlaylistsContainer(
+                    viewModel = viewModel,
+                    accountName = accountName,
+                    accountImageUrl = url,
+                    mediaMetadata = mediaMetadata,
+                    isPlaying = isPlaying,
+                    navController = navController,
+                    playerConnection = playerConnection,
+                    menuState = menuState,
+                    haptic = haptic,
+                    scope = scope
+                )
 
-            forYouSuggestions?.takeIf { it.isNotEmpty() }?.let { suggestions ->
-                item {
-                    ForYouSection(
-                        suggestions = suggestions,
-                        mediaMetadata = mediaMetadata,
-                        isPlaying = isPlaying,
-                        navController = navController,
-                        playerConnection = playerConnection,
-                        menuState = menuState,
-                        haptic = haptic,
-                        modifier = Modifier.animateItem()
-                    )
-                }
-            }
+                forgottenFavorites?.takeIf { it.isNotEmpty() }?.let { favorites ->
+                    item(key = "forgotten_favorites_title") {
+                        NavigationTitle(
+                            title = stringResource(R.string.forgotten_favorites),
+                            modifier = Modifier.animateItem()
+                        )
+                    }
 
-            explorePage?.moodAndGenres?.let { genres ->
-                item {
-                    NavigationTitle(
-                        title = stringResource(R.string.mood_and_genres),
-                        onClick = { navController.navigate("mood_and_genres") },
-                        modifier = Modifier.animateItem()
-                    )
+                    item(key = "forgotten_favorites_section") {
+                        ForgottenFavoritesSection(
+                            forgottenFavorites = favorites,
+                            mediaMetadata = mediaMetadata,
+                            isPlaying = isPlaying,
+                            horizontalLazyGridItemWidth = horizontalLazyGridItemWidth,
+                            lazyGridState = forgottenFavoritesLazyGridState,
+                            snapLayoutInfoProvider = forgottenFavoritesSnapLayoutInfoProvider,
+                            navController = navController,
+                            playerConnection = playerConnection,
+                            menuState = menuState,
+                            haptic = haptic
+                        )
+                    }
                 }
-                item {
-                    MoodAndGenresSection(
-                        moodAndGenres = genres,
-                        navController = navController
-                    )
-                }
-            }
 
-            if (isMoodAndGenresLoading) {
-                item {
-                    MoodAndGenresLoadingShimmer(modifier = Modifier.animateItem())
+                SimilarRecommendationsContainer(
+                    viewModel = viewModel,
+                    mediaMetadata = mediaMetadata,
+                    isPlaying = isPlaying,
+                    navController = navController,
+                    playerConnection = playerConnection,
+                    menuState = menuState,
+                    haptic = haptic,
+                    scope = scope
+                )
+
+                homePage?.sections?.forEachIndexed { index, section ->
+                    val isCommunity = section.title?.contains("community", ignoreCase = true) == true ||
+                        section.title?.contains("From the", ignoreCase = true) == true ||
+                        section.title?.contains("Trending", ignoreCase = true) == true &&
+                        section.items.all { it is com.nikhil.yt.innertube.models.PlaylistItem }
+
+                    val sectionKey = "${section.title.orEmpty()}_$index"
+
+                    if (isCommunity) {
+                        item(key = "community_$sectionKey") {
+                            CommunityPlaylistsSection(
+                                section = section,
+                                mediaMetadata = mediaMetadata,
+                                isPlaying = isPlaying,
+                                navController = navController,
+                                playerConnection = playerConnection,
+                                menuState = menuState,
+                                haptic = haptic,
+                                scope = scope,
+                                modifier = Modifier.animateItem()
+                            )
+                        }
+                    } else {
+                        item(key = "title_$sectionKey") {
+                            HomePageSectionTitle(
+                                section = section,
+                                navController = navController,
+                                modifier = Modifier.animateItem()
+                            )
+                        }
+
+                        item(key = "content_$sectionKey") {
+                            HomePageSectionContent(
+                                section = section,
+                                mediaMetadata = mediaMetadata,
+                                isPlaying = isPlaying,
+                                navController = navController,
+                                playerConnection = playerConnection,
+                                menuState = menuState,
+                                haptic = haptic,
+                                scope = scope
+                            )
+                        }
+                    }
                 }
-            }
+
+                if (isLoading || homePage?.continuation != null && homePage?.sections?.isNotEmpty() == true) {
+                    item(key = "loading_shimmer") {
+                        HomeLoadingShimmer(modifier = Modifier.animateItem())
+                    }
+                }
+
+                forYouSuggestions?.takeIf { it.isNotEmpty() }?.let { suggestions ->
+                    item(key = "for_you_section") {
+                        ForYouSection(
+                            suggestions = suggestions,
+                            mediaMetadata = mediaMetadata,
+                            isPlaying = isPlaying,
+                            navController = navController,
+                            playerConnection = playerConnection,
+                            menuState = menuState,
+                            haptic = haptic,
+                            modifier = Modifier.animateItem()
+                        )
+                    }
+                }
+
+                explorePage?.moodAndGenres?.let { genres ->
+                    item(key = "mood_genres_title") {
+                        NavigationTitle(
+                            title = stringResource(R.string.mood_and_genres),
+                            onClick = { navController.navigate("mood_and_genres") },
+                            modifier = Modifier.animateItem()
+                        )
+                    }
+                    item(key = "mood_genres_section") {
+                        MoodAndGenresSection(
+                            moodAndGenres = genres,
+                            navController = navController
+                        )
+                    }
+                }
+
+                if (isMoodAndGenresLoading) {
+                    item(key = "mood_genres_loading") {
+                        MoodAndGenresLoadingShimmer(modifier = Modifier.animateItem())
+                    }
+                }
             }
 
             HideOnScrollFAB(

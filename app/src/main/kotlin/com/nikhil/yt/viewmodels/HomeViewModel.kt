@@ -103,89 +103,69 @@ class HomeViewModel @Inject constructor(
         isLoading.value = true
         
         try {
+            val hideExplicit = context.dataStore.get(HideExplicitKey, false) ?: false
+            val hideVideo = context.dataStore.get(HideVideoKey, false) ?: false
+            val fromTimeStamp = System.currentTimeMillis() - 86400000 * 7 * 2
+
+            // Stage 1: Load local items immediately for instant UI display
             supervisorScope {
-                val hideExplicit = context.dataStore.get(HideExplicitKey, false)
-                val hideVideo = context.dataStore.get(HideVideoKey, false)
-                val fromTimeStamp = System.currentTimeMillis() - 86400000 * 7 * 2
-
                 launch { getQuickPicks() }
-                launch { forgottenFavorites.value = database.forgottenFavorites().first().shuffled().take(20) }
-                launch {
-                    try {
-                        val hideExplicit = context.dataStore.get(HideExplicitKey, false)
-                        val hideVideo = context.dataStore.get(HideVideoKey, false)
-                        forYouSuggestions.value = forYouEngine.getSuggestions(hideExplicit, hideVideo)
-                    } catch (_: Exception) {}
+                launch { 
+                    runCatching {
+                        forgottenFavorites.value = database.forgottenFavorites().first().shuffled().take(20)
+                    }
                 }
-                
                 launch {
-                    val keepListeningSongs = database.mostPlayedSongs(fromTimeStamp, limit = 15, offset = 5)
-                        .first().shuffled().take(10)
-                    val keepListeningAlbums = database.mostPlayedAlbums(fromTimeStamp, limit = 8, offset = 2)
-                        .first().filter { it.album.thumbnailUrl != null }.shuffled().take(5)
-                    val keepListeningArtists = database.mostPlayedArtists(fromTimeStamp)
-                        .first().filter { it.artist.isYouTubeArtist && it.artist.thumbnailUrl != null }
-                        .shuffled().take(5)
-                    keepListening.value = (keepListeningSongs + keepListeningAlbums + keepListeningArtists).shuffled()
-                }
-
-                launch {
-                        YouTube.home().onSuccess { page ->
-                        homePage.value = page.copy(
-                            chips = filterHomeChips(page.chips),
-                            sections = page.sections.map { section ->
-                                section.copy(items = section.items.filterExplicit(hideExplicit).filterVideo(hideVideo))
-                            }
-                        )
-                    }.onFailure { reportException(it) }
-                }
-
-                launch {
-                    YouTube.explore().onSuccess { page ->
-                        val artists: MutableMap<Int, String> = mutableMapOf()
-                        val favouriteArtists: MutableMap<Int, String> = mutableMapOf()
-                        database.allArtistsByPlayTime().first().let { list ->
-                            var favIndex = 0
-                            for ((artistsIndex, artist) in list.withIndex()) {
-                                artists[artistsIndex] = artist.id
-                                if (artist.artist.bookmarkedAt != null) {
-                                    favouriteArtists[favIndex] = artist.id
-                                    favIndex++
-                                }
-                            }
-                        }
-                        explorePage.value = page.copy(
-                            newReleaseAlbums = page.newReleaseAlbums
-                                .sortedBy { album ->
-                                    val artistIds = album.artists.orEmpty().mapNotNull { it.id }
-                                    val firstArtistKey = artistIds.firstNotNullOfOrNull { artistId ->
-                                        if (artistId in favouriteArtists.values) {
-                                            favouriteArtists.entries.firstOrNull { it.value == artistId }?.key
-                                        } else {
-                                            artists.entries.firstOrNull { it.value == artistId }?.key
-                                        }
-                                    } ?: Int.MAX_VALUE
-                                    firstArtistKey
-                                }.filterExplicit(hideExplicit)
-                        )
-                    }.onFailure { reportException(it) }
+                    runCatching {
+                        val keepListeningSongs = database.mostPlayedSongs(fromTimeStamp, limit = 15, offset = 5)
+                            .first().shuffled().take(10)
+                        val keepListeningAlbums = database.mostPlayedAlbums(fromTimeStamp, limit = 8, offset = 2)
+                            .first().filter { it.album.thumbnailUrl != null }.shuffled().take(5)
+                        val keepListeningArtists = database.mostPlayedArtists(fromTimeStamp)
+                            .first().filter { it.artist.isYouTubeArtist && it.artist.thumbnailUrl != null }
+                            .shuffled().take(5)
+                        keepListening.value = (keepListeningSongs + keepListeningAlbums + keepListeningArtists).shuffled()
+                    }
                 }
             }
 
             allLocalItems.value = (quickPicks.value.orEmpty() + forgottenFavorites.value.orEmpty() + keepListening.value.orEmpty())
                 .filter { it is Song || it is Album }
 
-            viewModelScope.launch(Dispatchers.IO) {
-                loadSimilarRecommendations()
+            // Stage 2: Fetch primary Home feed from YouTube
+            runCatching {
+                YouTube.home().onSuccess { page ->
+                    homePage.value = page.copy(
+                        chips = filterHomeChips(page.chips),
+                        sections = page.sections.map { section ->
+                            section.copy(items = section.items.filterExplicit(hideExplicit).filterVideo(hideVideo))
+                        }
+                    )
+                }.onFailure { reportException(it) }
             }
 
-            allYtItems.value = similarRecommendations.value?.flatMap { it.items }.orEmpty() +
-                    homePage.value?.sections?.flatMap { it.items }.orEmpty()
-                    
+            allYtItems.value = homePage.value?.sections?.flatMap { it.items }.orEmpty()
+            isLoading.value = false
             isInitialLoadComplete.value = true
+
+            // Stage 3: Deferred secondary suggestions in background
+            viewModelScope.launch(Dispatchers.IO) {
+                runCatching {
+                    forYouSuggestions.value = forYouEngine.getSuggestions(hideExplicit, hideVideo)
+                }
+                runCatching {
+                    loadSimilarRecommendations()
+                }
+                runCatching {
+                    YouTube.explore().onSuccess { page ->
+                        explorePage.value = page.copy(
+                            newReleaseAlbums = page.newReleaseAlbums.filterExplicit(hideExplicit)
+                        )
+                    }.onFailure { reportException(it) }
+                }
+            }
         } catch (e: Exception) {
             reportException(e)
-        } finally {
             isLoading.value = false
         }
     }

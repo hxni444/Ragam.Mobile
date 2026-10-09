@@ -477,40 +477,12 @@ fun AlbumListItem(
     modifier: Modifier = Modifier,
     showLikedIcon: Boolean = true,
     badges: @Composable RowScope.() -> Unit = {
-        val database = LocalDatabase.current
-        val downloadUtil = LocalDownloadUtil.current
-        var songs by remember {
-            mutableStateOf(emptyList<Song>())
-        }
-
-        LaunchedEffect(Unit) {
-            database.albumSongs(album.id).collect {
-                songs = it
-            }
-        }
-
-        var downloadState by remember {
-            mutableStateOf(Download.STATE_STOPPED)
-        }
-
-        LaunchedEffect(songs) {
-            if (songs.isEmpty()) return@LaunchedEffect
-            downloadUtil.downloads.collect { downloads ->
-                downloadState = when {
-                    songs.all { downloads[it.id]?.state == STATE_COMPLETED } -> STATE_COMPLETED
-                    songs.all { downloads[it.id]?.state in listOf(STATE_QUEUED, STATE_DOWNLOADING, STATE_COMPLETED) } -> STATE_DOWNLOADING
-                    else -> Download.STATE_STOPPED
-                }
-            }
-        }
-
         if (showLikedIcon && album.album.bookmarkedAt != null) {
             Icon.Favorite()
         }
         if (album.album.explicit) {
             Icon.Explicit()
         }
-        Icon.Download(downloadState)
     },
     isActive: Boolean = false,
     isPlaying: Boolean = false,
@@ -540,36 +512,14 @@ fun AlbumListItem(
 fun AlbumGridItem(
     album: Album,
     modifier: Modifier = Modifier,
-    coroutineScope: CoroutineScope,
+    coroutineScope: CoroutineScope? = null,
     badges: @Composable RowScope.() -> Unit = {
-        val database = LocalDatabase.current
-        val downloadUtil = LocalDownloadUtil.current
-        var songs by remember { mutableStateOf(emptyList<Song>()) }
-
-        LaunchedEffect(Unit) {
-            database.albumSongs(album.id).collect { songs = it }
-        }
-
-        var downloadState by remember { mutableStateOf(Download.STATE_STOPPED) }
-
-        LaunchedEffect(songs) {
-            if (songs.isEmpty()) return@LaunchedEffect
-            downloadUtil.downloads.collect { downloads ->
-                downloadState = when {
-                    songs.all { downloads[it.id]?.state == STATE_COMPLETED } -> STATE_COMPLETED
-                    songs.all { downloads[it.id]?.state in listOf(STATE_QUEUED, STATE_DOWNLOADING, STATE_COMPLETED) } -> STATE_DOWNLOADING
-                    else -> Download.STATE_STOPPED
-                }
-            }
-        }
-
         if (album.album.bookmarkedAt != null) {
             Icon.Favorite()
         }
         if (album.album.explicit) {
             Icon.Explicit()
         }
-        Icon.Download(downloadState)
     },
     isActive: Boolean = false,
     isPlaying: Boolean = false,
@@ -598,6 +548,7 @@ fun AlbumGridItem(
     thumbnailContent = {
         val database = LocalDatabase.current
         val playerConnection = LocalPlayerConnection.current ?: return@GridItem
+        val scope = coroutineScope ?: rememberCoroutineScope()
 
         ItemThumbnail(
             thumbnailUrl = album.album.thumbnailUrl,
@@ -609,7 +560,7 @@ fun AlbumGridItem(
         AlbumPlayButton(
             visible = !isActive,
             onClick = {
-                coroutineScope.launch {
+                scope.launch {
                     database.albumWithSongs(album.id).firstOrNull()?.let { albumWithSongs ->
                         playerConnection.playQueue(LocalAlbumRadio(albumWithSongs))
                     }
@@ -1179,41 +1130,22 @@ fun ItemThumbnail(
     thumbnailRatio: Float = 1f
 ) {
     val context = LocalContext.current
-    val density = LocalDensity.current
 
-    BoxWithConstraints(
+    Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
-            .fillMaxSize()
             .aspectRatio(thumbnailRatio)
             .clip(shape)
     ) {
-        val (cropThumbnailToSquare, _) = rememberPreference(CropThumbnailToSquareKey, false)
-        val isYouTubeThumb = thumbnailUrl?.contains("ytimg.com", ignoreCase = true) == true
-        val shouldApplySquareCrop = cropThumbnailToSquare && isYouTubeThumb && kotlin.math.abs(thumbnailRatio - 1f) < 0.001f
-        val widthPx = if (maxWidth == Dp.Infinity) null else with(density) { maxWidth.roundToPx().coerceAtLeast(1) }
-        val heightPx = if (maxHeight == Dp.Infinity) null else with(density) { maxHeight.roundToPx().coerceAtLeast(1) }
+        val isYouTubeThumb = remember(thumbnailUrl) { thumbnailUrl?.contains("ytimg.com", ignoreCase = true) == true }
 
         if (albumIndex == null) {
-            if (shouldLoadImage) {
-                val request = remember(thumbnailUrl, widthPx, heightPx) {
-                    ImageRequest.Builder(context)
-                        .data(thumbnailUrl)
-                        .allowHardware(true)
-                        .apply {
-                            if (widthPx != null && heightPx != null) {
-                                size(widthPx, heightPx)
-                            }
-                        }
-                        .build()
-                }
+            if (shouldLoadImage && !thumbnailUrl.isNullOrEmpty()) {
                 AsyncImage(
-                    model = request,
+                    model = thumbnailUrl,
                     contentDescription = null,
-                    contentScale = if (shouldApplySquareCrop) ContentScale.Crop else ContentScale.Fit,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .let { if (shouldApplySquareCrop) it.aspectRatio(1f) else it }
+                    contentScale = if (isYouTubeThumb && kotlin.math.abs(thumbnailRatio - 1f) < 0.001f) ContentScale.Crop else ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize()
                 )
             } else {
                 Box(
@@ -1281,37 +1213,21 @@ fun LocalThumbnail(
     playButtonVisible: Boolean = false,
     thumbnailRatio: Float = 1f
 ) {
-    val context = LocalContext.current
-    val density = LocalDensity.current
-
-    BoxWithConstraints(
+    Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .aspectRatio(thumbnailRatio)
             .clip(shape)
     ) {
-        val (cropThumbnailToSquare, _) = rememberPreference(CropThumbnailToSquareKey, false)
-        val isYouTubeThumb = thumbnailUrl?.contains("ytimg.com", ignoreCase = true) == true
-        val shouldApplySquareCrop = cropThumbnailToSquare && isYouTubeThumb && kotlin.math.abs(thumbnailRatio - 1f) < 0.001f
-        val widthPx = if (maxWidth == Dp.Infinity) null else with(density) { maxWidth.roundToPx().coerceAtLeast(1) }
-        val heightPx = if (maxHeight == Dp.Infinity) null else with(density) { maxHeight.roundToPx().coerceAtLeast(1) }
-        val request = remember(thumbnailUrl, widthPx, heightPx) {
-            ImageRequest.Builder(context)
-                .data(thumbnailUrl)
-                .allowHardware(true)
-                .apply {
-                    if (widthPx != null && heightPx != null) {
-                        size(widthPx, heightPx)
-                    }
-                }
-                .build()
+        val isYouTubeThumb = remember(thumbnailUrl) { thumbnailUrl?.contains("ytimg.com", ignoreCase = true) == true }
+        if (!thumbnailUrl.isNullOrEmpty()) {
+            AsyncImage(
+                model = thumbnailUrl,
+                contentDescription = null,
+                contentScale = if (isYouTubeThumb && kotlin.math.abs(thumbnailRatio - 1f) < 0.001f) ContentScale.Crop else ContentScale.Fit,
+                modifier = Modifier.fillMaxSize()
+            )
         }
-        AsyncImage(
-            model = request,
-            contentDescription = null,
-            contentScale = if (shouldApplySquareCrop) ContentScale.Crop else ContentScale.Fit,
-            modifier = Modifier.fillMaxSize().let { if (shouldApplySquareCrop) it.aspectRatio(1f) else it }
-        )
 
         AnimatedVisibility(
             visible = isActive,

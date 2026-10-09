@@ -1,9 +1,9 @@
-﻿<vector xmlns:android="http://schemas.android.com/apk/res/android"
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="48dp"
     android:height="48dp"
     android:viewportWidth="1080"
     android:viewportHeight="1080">
-    
+
     <!-- Background rounded square -->
     <path
         android:fillColor="#EF4903"
@@ -17,8 +17,8 @@
         android:strokeAlpha="0.4"
         android:pathData="M270,30 L810,30 C942.5,30 1050,137.5 1050,270 L1050,810 C1050,942.5 942.5,1050 810,1050 L270,1050 C137.5,1050 30,942.5 30,810 L30,270 C30,137.5 137.5,30 270,30 Z"/>
 
-    <!-- Central R glyph matching desktop logo -->
+    <!-- Exact Nevera R Brand Glyph from appicon.svg -->
     <path
         android:fillColor="#EF4903"
-        android:pathData="M310,250 L560,250 C680,250 760,330 760,440 C760,530 700,600 600,630 L770,830 L620,830 L480,660 L440,660 L440,830 L310,830 Z M440,370 L440,540 L550,540 C610,540 645,505 645,455 C645,405 610,370 550,370 Z"/>
+        android:pathData="M577.10,493.10 L491.70,493.10 C365.70,493.10 295.70,558.20 295.70,675.10 L295.70,820.00 L393.70,820.00 L393.70,675.10 C393.70,612.10 428.70,577.10 491.70,577.10 L502.20,577.10 L666.00,820.00 L784.30,820.00 L618.40,575.00 C717.10,563.10 770.30,508.50 770.30,418.20 C770.30,316.70 701.00,260.00 577.10,260.00 L295.70,260.00 L295.70,344.00 L577.10,344.00 C633.80,344.00 665.30,370.60 665.30,418.20 C665.30,466.50 633.80,493.10 577.10,493.10 Z"/>
 </vector>

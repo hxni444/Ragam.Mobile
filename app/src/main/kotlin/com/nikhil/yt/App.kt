@@ -193,6 +193,7 @@ class App : Application(), SingletonImageLoader.Factory {
                     val pw = PrintWriter(sw)
                     throwable.printStackTrace(pw)
                     val stack = sw.toString()
+                    android.util.Log.e("CRASH_REPORT", "Uncaught Exception: $stack", throwable)
 
                     val intent = Intent(this@App, DebugActivity::class.java).apply {
                         putExtra(DebugActivity.EXTRA_STACK_TRACE, stack)
