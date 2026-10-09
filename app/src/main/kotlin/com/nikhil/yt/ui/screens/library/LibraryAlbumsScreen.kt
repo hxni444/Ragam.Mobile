@@ -193,7 +193,7 @@ fun LibraryAlbumsScreen(
             Text(
                 text = pluralStringResource(R.plurals.n_album, albums.size, albums.size),
                 style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.secondary,
+                color = Color(0xFF9E9E9E),
             )
 
             IconButton(
@@ -211,6 +211,7 @@ fun LibraryAlbumsScreen(
                         },
                     ),
                     contentDescription = null,
+                    tint = Color.White,
                 )
             }
         }

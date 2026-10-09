@@ -13,18 +13,23 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.nikhil.yt.LocalPlayerAwareWindowInsets
@@ -50,12 +55,25 @@ fun BoxScope.HideOnScrollFAB(
             ),
     ) {
         FloatingActionButton(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .padding(16.dp)
+                .border(1.dp, Color.White.copy(alpha = 0.22f), RoundedCornerShape(16.dp)),
             onClick = onClick,
+            shape = RoundedCornerShape(16.dp),
+            containerColor = Color(0xFF202023).copy(alpha = 0.85f),
+            contentColor = Color.White,
+            elevation = FloatingActionButtonDefaults.elevation(
+                defaultElevation = 0.dp,
+                pressedElevation = 2.dp,
+                hoveredElevation = 1.dp,
+                focusedElevation = 1.dp
+            )
         ) {
             Icon(
                 painter = painterResource(icon),
                 contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(24.dp)
             )
         }
     }
@@ -81,12 +99,25 @@ fun BoxScope.HideOnScrollFAB(
             ),
     ) {
         FloatingActionButton(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .padding(16.dp)
+                .border(1.dp, Color.White.copy(alpha = 0.22f), RoundedCornerShape(16.dp)),
             onClick = onClick,
+            shape = RoundedCornerShape(16.dp),
+            containerColor = Color(0xFF202023).copy(alpha = 0.85f),
+            contentColor = Color.White,
+            elevation = FloatingActionButtonDefaults.elevation(
+                defaultElevation = 0.dp,
+                pressedElevation = 2.dp,
+                hoveredElevation = 1.dp,
+                focusedElevation = 1.dp
+            )
         ) {
             Icon(
                 painter = painterResource(icon),
                 contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(24.dp)
             )
         }
     }
@@ -112,12 +143,25 @@ fun BoxScope.HideOnScrollFAB(
             ),
     ) {
         FloatingActionButton(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .padding(16.dp)
+                .border(1.dp, Color.White.copy(alpha = 0.22f), RoundedCornerShape(16.dp)),
             onClick = onClick,
+            shape = RoundedCornerShape(16.dp),
+            containerColor = Color(0xFF202023).copy(alpha = 0.85f),
+            contentColor = Color.White,
+            elevation = FloatingActionButtonDefaults.elevation(
+                defaultElevation = 0.dp,
+                pressedElevation = 2.dp,
+                hoveredElevation = 1.dp,
+                focusedElevation = 1.dp
+            )
         ) {
             Icon(
                 painter = painterResource(icon),
                 contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(24.dp)
             )
         }
     }

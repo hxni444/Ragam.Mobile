@@ -20,6 +20,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
@@ -162,6 +163,7 @@ inline fun ListItem(
         Column(Modifier.weight(1f).padding(horizontal = 6.dp)) {
             Text(
                 text = title, fontSize = 14.sp, fontWeight = FontWeight.Bold,
+                color = Color.White,
                 maxLines = 1, overflow = TextOverflow.Ellipsis
             )
             if (subtitle != null) Row(verticalAlignment = Alignment.CenterVertically) { subtitle() }
@@ -186,7 +188,7 @@ fun ListItem(
     subtitle = {
         badges()
         if (!subtitle.isNullOrEmpty()) {
-            Text(text = subtitle, color = Color.White.copy(alpha = 0.70f), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(text = subtitle, color = Color(0xFFAAAAAA), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     },
     thumbnailContent = thumbnailContent,
@@ -254,6 +256,7 @@ fun GridItem(
             text = title,
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Bold,
+            color = Color.White,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Start,
@@ -264,7 +267,7 @@ fun GridItem(
         Text(
             text = subtitle,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.secondary,
+            color = Color(0xFFAAAAAA),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -373,6 +376,7 @@ fun SongGridItem(
             text = song.song.title,
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Bold,
+            color = Color.White,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.basicMarquee().fillMaxWidth()
@@ -385,7 +389,7 @@ fun SongGridItem(
                 makeTimeString(song.song.duration * 1000L)
             ),
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.secondary,
+            color = Color(0xFFAAAAAA),
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
@@ -530,6 +534,7 @@ fun AlbumGridItem(
             text = album.album.title,
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Bold,
+            color = Color.White,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.basicMarquee().fillMaxWidth()
@@ -539,7 +544,7 @@ fun AlbumGridItem(
         Text(
             text = album.artists.joinToString { it.name },
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.secondary,
+            color = Color(0xFFAAAAAA),
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
@@ -613,7 +618,7 @@ fun PlaylistListItem(
                 Icon(
                     painter = painterResource(painter),
                     contentDescription = null,
-                    tint = LocalContentColor.current.copy(alpha = 0.8f),
+                    tint = Color.White,
                     modifier = Modifier.size(ListThumbnailSize / 2)
                 )
             },
@@ -807,7 +812,7 @@ fun PlaylistGridItem(
                     Icon(
                         painter = painterResource(painter),
                         contentDescription = null,
-                        tint = LocalContentColor.current.copy(alpha = 0.8f),
+                        tint = Color.White,
                         modifier = Modifier.size(width / 2)
                     )
                 }
@@ -962,6 +967,7 @@ fun YouTubeGridItem(
             text = item.title,
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Bold,
+            color = Color.White,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = if (item is ArtistItem) TextAlign.Center else TextAlign.Start,
@@ -979,7 +985,7 @@ fun YouTubeGridItem(
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.70f),
+                color = Color(0xFFAAAAAA),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -1324,7 +1330,8 @@ fun PlaylistThumbnail(
             modifier = Modifier
                 .size(size)
                 .clip(shape)
-                .background(MaterialTheme.colorScheme.surfaceContainer)
+                .background(Color(0xFF161618))
+                .border(1.dp, Color.White.copy(alpha = 0.15f), shape)
         ) {
             placeHolder()
         }

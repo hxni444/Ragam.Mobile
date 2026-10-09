@@ -41,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -97,7 +98,7 @@ fun PreferenceEntry(
                 Text(
                     text = description,
                     style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.secondary,
+                    color = Color(0xFFAAAAAA),
                 )
             }
 
@@ -527,7 +528,7 @@ fun PreferenceGroupTitle(
     Text(
         text = title.uppercase(),
         style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
+        color = Color(0xFF9E9E9E),
         modifier = modifier.padding(16.dp),
     )
 }

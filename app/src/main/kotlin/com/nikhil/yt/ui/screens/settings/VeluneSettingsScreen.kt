@@ -62,7 +62,10 @@ fun VeluneSettingsScreen(
                 },
 
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White,
+                    actionIconContentColor = Color.White
                 )
             )
         },
@@ -114,6 +117,7 @@ fun VeluneSettingsScreen(
                 }
             }
 
+            /*
             item {
                 SettingsItemScreenshotStyle(
                     icon = painterResource(R.drawable.palette),
@@ -121,6 +125,7 @@ fun VeluneSettingsScreen(
                     onClick = { navController.navigate("settings/appearance") }
                 )
             }
+            */
 
             item {
                 if (isLoggedIn) {

@@ -71,6 +71,7 @@ fun NavigationTitle(
                     Text(
                         text = labelText,
                         style = MaterialTheme.typography.labelLarge,
+                        color = Color(0xFFAAAAAA),
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
@@ -79,7 +80,7 @@ fun NavigationTitle(
                     text = title,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground,
+                    color = Color.White,
                     overflow = TextOverflow.Ellipsis,
                     maxLines = 1,
                 )
@@ -88,7 +89,7 @@ fun NavigationTitle(
                     Text(
                         text = subtitleText,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = Color(0xFFAAAAAA),
                         overflow = TextOverflow.Ellipsis,
                         maxLines = 1,
                     )

@@ -187,13 +187,6 @@ fun AboutScreen(
                 )
                 Spacer(Modifier.height(24.dp))
 
-                AboutItemCard(
-                    iconRes = R.drawable.ic_discord,
-                    title = "Discord Server",
-                    subtitle = "Join the community to chat and report bugs",
-                    onClick = { uriHandler.openUri("https://discord.gg/cJNHTdoP6H")}
-                )
-                Spacer(Modifier.height(24.dp))
 
                 SupportDeveloperCard()
 
@@ -244,7 +237,7 @@ fun SectionTitle(title: String) {
     Text(
         text = title,
         style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.primary,
+        color = Color(0xFF9E9E9E),
         fontWeight = FontWeight.Bold,
         modifier = Modifier
             .fillMaxWidth()
@@ -344,9 +337,10 @@ fun SupportDeveloperCard(modifier: Modifier = Modifier) {
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 4.dp),
+            .padding(horizontal = 4.dp, vertical = 4.dp)
+            .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(16.dp)),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f)
+            containerColor = Color(0xFF161618)
         ),
         shape = RoundedCornerShape(16.dp)
     ) {
@@ -365,12 +359,12 @@ fun SupportDeveloperCard(modifier: Modifier = Modifier) {
                     text = "Support the Developer",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = Color.White
                 )
                 Text(
                     text = "If you enjoy Ragam Mobile, consider buying me a chai!",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = Color(0xFFAAAAAA)
                 )
             }
 
@@ -381,21 +375,25 @@ fun SupportDeveloperCard(modifier: Modifier = Modifier) {
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = Color.Black
+                    containerColor = Color.White.copy(alpha = 0.15f),
+                    contentColor = Color.White
                 ),
-                modifier = Modifier.height(36.dp)
+                modifier = Modifier
+                    .height(36.dp)
+                    .border(1.dp, Color.White.copy(alpha = 0.22f), RoundedCornerShape(12.dp))
             ) {
                 Icon(
                     painter = painterResource(id = android.R.drawable.ic_menu_send),
                     contentDescription = "UPI",
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(16.dp),
+                    tint = Color.White
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = "UPI",
                     style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
                 )
             }
         }

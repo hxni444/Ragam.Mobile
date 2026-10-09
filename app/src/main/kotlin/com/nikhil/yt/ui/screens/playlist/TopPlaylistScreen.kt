@@ -10,6 +10,7 @@ package com.nikhil.yt.ui.screens.playlist
 
 import com.nikhil.yt.ui.component.VeluneLoader
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -615,8 +616,11 @@ fun TopPlaylistScreen(
                                         }
                                     }
 
-                                    // Play Button
-                                    Button(
+                                    val glassBg = Color.White.copy(alpha = 0.12f)
+                                    val glassBorder = BorderStroke(1.dp, Color.White.copy(alpha = 0.20f))
+
+                                    // Play Button (Glassmorphic)
+                                    Surface(
                                         onClick = {
                                             playerConnection.playQueue(
                                                 ListQueue(
@@ -626,19 +630,27 @@ fun TopPlaylistScreen(
                                             )
                                         },
                                         shape = RoundedCornerShape(24.dp),
+                                        color = glassBg,
+                                        border = glassBorder,
                                         modifier = Modifier
                                             .weight(1f)
                                             .height(48.dp)
                                     ) {
-                                        Icon(
-                                            painter = painterResource(R.drawable.play),
-                                            contentDescription = stringResource(R.string.play),
-                                            modifier = Modifier.size(24.dp)
-                                        )
+                                        Box(
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(R.drawable.play),
+                                                contentDescription = stringResource(R.string.play),
+                                                tint = Color.White,
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        }
                                     }
 
-                                    // Shuffle Button
-                                    Button(
+                                    // Shuffle Button (Glassmorphic)
+                                    Surface(
                                         onClick = {
                                             playerConnection.playQueue(
                                                 ListQueue(
@@ -648,18 +660,26 @@ fun TopPlaylistScreen(
                                             )
                                         },
                                         shape = RoundedCornerShape(24.dp),
+                                        color = glassBg,
+                                        border = glassBorder,
                                         modifier = Modifier
                                             .weight(1f)
                                             .height(48.dp)
                                     ) {
-                                        Icon(
-                                            painter = painterResource(R.drawable.shuffle),
-                                            contentDescription = stringResource(R.string.shuffle),
-                                            modifier = Modifier.size(24.dp)
-                                        )
+                                        Box(
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(R.drawable.shuffle),
+                                                contentDescription = stringResource(R.string.shuffle),
+                                                tint = Color.White,
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        }
                                     }
 
-                                    // Add to Queue Button
+                                    // Add to Queue Button (Glassmorphic)
                                     Surface(
                                         onClick = {
                                             playerConnection.addToQueue(
@@ -667,7 +687,8 @@ fun TopPlaylistScreen(
                                             )
                                         },
                                         shape = CircleShape,
-                                        color = MaterialTheme.colorScheme.surfaceVariant,
+                                        color = glassBg,
+                                        border = glassBorder,
                                         modifier = Modifier.size(48.dp)
                                     ) {
                                         Box(
@@ -677,7 +698,7 @@ fun TopPlaylistScreen(
                                             Icon(
                                                 painter = painterResource(R.drawable.queue_music),
                                                 contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                tint = Color.White,
                                                 modifier = Modifier.size(24.dp)
                                             )
                                         }

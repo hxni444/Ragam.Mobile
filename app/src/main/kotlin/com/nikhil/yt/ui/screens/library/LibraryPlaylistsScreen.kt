@@ -412,7 +412,7 @@ fun LibraryPlaylistsScreen(
                     playlists.size
                 ),
                 style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.secondary,
+                color = Color(0xFF9E9E9E),
             )
 
             if (canEnterReorderMode) {
@@ -423,6 +423,7 @@ fun LibraryPlaylistsScreen(
                     Icon(
                         painter = painterResource(if (reorderEnabled) R.drawable.lock_open else R.drawable.lock),
                         contentDescription = null,
+                        tint = Color.White,
                     )
                 }
             }
@@ -442,6 +443,7 @@ fun LibraryPlaylistsScreen(
                         },
                     ),
                     contentDescription = null,
+                    tint = Color.White,
                 )
             }
         }

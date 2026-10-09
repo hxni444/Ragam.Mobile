@@ -265,7 +265,7 @@ fun LibrarySongsScreen(
                                     songs.size
                                 ),
                                 style = MaterialTheme.typography.titleSmall,
-                                color = MaterialTheme.colorScheme.secondary,
+                                color = Color(0xFF9E9E9E),
                             )
                         }
                     }

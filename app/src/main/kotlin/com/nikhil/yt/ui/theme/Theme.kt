@@ -174,11 +174,11 @@ private fun exactPaletteColorScheme(
         onTertiaryContainer = tertiaryScheme.onPrimaryContainer.toComposeColor(),
 
         background = neutralScheme.background.toComposeColor(),
-        onBackground = neutralScheme.onBackground.toComposeColor(),
+        onBackground = if (isDark) Color.White else neutralScheme.onBackground.toComposeColor(),
         surface = neutralScheme.surface.toComposeColor(),
-        onSurface = neutralScheme.onSurface.toComposeColor(),
+        onSurface = if (isDark) Color.White else neutralScheme.onSurface.toComposeColor(),
         surfaceVariant = neutralScheme.surfaceVariant.toComposeColor(),
-        onSurfaceVariant = neutralScheme.onSurfaceVariant.toComposeColor(),
+        onSurfaceVariant = if (isDark) Color(0xFFAAAAAA) else neutralScheme.onSurfaceVariant.toComposeColor(),
         inverseSurface = neutralScheme.inverseSurface.toComposeColor(),
         inverseOnSurface = neutralScheme.inverseOnSurface.toComposeColor(),
 
@@ -190,8 +190,8 @@ private fun exactPaletteColorScheme(
         surfaceContainerHigh = neutralScheme.surfaceContainerHigh.toComposeColor(),
         surfaceContainerHighest = neutralScheme.surfaceContainerHighest.toComposeColor(),
 
-        outline = neutralScheme.outline.toComposeColor(),
-        outlineVariant = neutralScheme.outlineVariant.toComposeColor(),
+        outline = if (isDark) Color(0xFF424242) else neutralScheme.outline.toComposeColor(),
+        outlineVariant = if (isDark) Color(0xFF2C2C2E) else neutralScheme.outlineVariant.toComposeColor(),
 
         error = primaryScheme.error.toComposeColor(),
         onError = primaryScheme.onError.toComposeColor(),
@@ -213,7 +213,7 @@ private fun m3DynamicColorScheme(
     val primarySeed = seedPalette?.primary ?: keyColor
     val secondarySeed = seedPalette?.secondary ?: primarySeed
     val tertiarySeed = seedPalette?.tertiary ?: primarySeed
-    val neutralSeed = seedPalette?.neutral ?: primarySeed
+    val neutralSeed = seedPalette?.neutral ?: Color(0xFF808080)
 
     val primaryScheme = m3Scheme(primarySeed, isDark, contrastLevel)
     val secondaryScheme = m3Scheme(secondarySeed, isDark, contrastLevel)
@@ -238,11 +238,11 @@ private fun m3DynamicColorScheme(
         onTertiaryContainer = tertiaryScheme.onPrimaryContainer.toComposeColor(),
 
         background = neutralScheme.background.toComposeColor(),
-        onBackground = neutralScheme.onBackground.toComposeColor(),
+        onBackground = if (isDark) Color.White else neutralScheme.onBackground.toComposeColor(),
         surface = neutralScheme.surface.toComposeColor(),
-        onSurface = neutralScheme.onSurface.toComposeColor(),
+        onSurface = if (isDark) Color.White else neutralScheme.onSurface.toComposeColor(),
         surfaceVariant = neutralScheme.surfaceVariant.toComposeColor(),
-        onSurfaceVariant = neutralScheme.onSurfaceVariant.toComposeColor(),
+        onSurfaceVariant = if (isDark) Color(0xFFAAAAAA) else neutralScheme.onSurfaceVariant.toComposeColor(),
         inverseSurface = neutralScheme.inverseSurface.toComposeColor(),
         inverseOnSurface = neutralScheme.inverseOnSurface.toComposeColor(),
 
@@ -254,8 +254,8 @@ private fun m3DynamicColorScheme(
         surfaceContainerHigh = neutralScheme.surfaceContainerHigh.toComposeColor(),
         surfaceContainerHighest = neutralScheme.surfaceContainerHighest.toComposeColor(),
 
-        outline = neutralScheme.outline.toComposeColor(),
-        outlineVariant = neutralScheme.outlineVariant.toComposeColor(),
+        outline = if (isDark) Color(0xFF424242) else neutralScheme.outline.toComposeColor(),
+        outlineVariant = if (isDark) Color(0xFF2C2C2E) else neutralScheme.outlineVariant.toComposeColor(),
 
         error = primaryScheme.error.toComposeColor(),
         onError = primaryScheme.onError.toComposeColor(),

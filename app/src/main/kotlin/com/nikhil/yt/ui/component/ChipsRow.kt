@@ -60,7 +60,7 @@ fun <E> ChipsRow(
     currentValue: E,
     onValueUpdate: (E) -> Unit,
     modifier: Modifier = Modifier,
-    containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
+    containerColor: Color = Color.White.copy(alpha = 0.08f),
     icons: Map<E, Int> = emptyMap(),
 ) {
     Row(
@@ -79,30 +79,41 @@ fun <E> ChipsRow(
             FilterChip(
                 selected = isSelected,
                 onClick = { onValueUpdate(value) },
-                label = { Text(label) },
+                label = { 
+                    Text(
+                        text = label,
+                        color = if (isSelected) Color.White else Color(0xFFD0D0D0)
+                    ) 
+                },
                 leadingIcon = {
                     if (isSelected) {
                         Icon(
                             painter = painterResource(R.drawable.done),
                             contentDescription = null,
+                            tint = Color.White,
                             modifier = Modifier.size(FilterChipDefaults.IconSize),
                         )
                     } else if (iconRes != null) {
                         Icon(
                             painter = painterResource(iconRes),
                             contentDescription = null,
+                            tint = Color(0xFFD0D0D0),
                             modifier = Modifier.size(FilterChipDefaults.IconSize),
                         )
                     }
                 },
                 shape = RoundedCornerShape(16.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, if (isSelected) Color(0xFFEF4903).copy(alpha = 0.5f) else Color.White.copy(alpha = 0.18f)),
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp, 
+                    if (isSelected) Color.White.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.15f)
+                ),
                 colors = FilterChipDefaults.filterChipColors(
-                    containerColor = if (isSelected) Color(0xFFEF4903).copy(alpha = 0.25f) else Color.White.copy(alpha = 0.12f),
-                    labelColor = Color.White,
+                    containerColor = Color.White.copy(alpha = 0.08f),
+                    selectedContainerColor = Color.White.copy(alpha = 0.20f),
+                    labelColor = Color(0xFFD0D0D0),
                     selectedLabelColor = Color.White,
-                    iconColor = Color.White,
-                    selectedLeadingIconColor = Color(0xFFEF4903)
+                    iconColor = Color(0xFFD0D0D0),
+                    selectedLeadingIconColor = Color.White
                 ),
             )
 
@@ -121,7 +132,7 @@ fun <Int> ChoiceChipsRow(
     currentValue: Int,
     onValueUpdate: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
+    containerColor: Color = Color.White.copy(alpha = 0.08f),
 ) {
     var expandIconDegree by remember { mutableFloatStateOf(0f) }
     val rotationAnimation by animateFloatAsState(
@@ -153,20 +164,22 @@ fun <Int> ChoiceChipsRow(
                             OptionStats.YEARS -> stringResource(id = R.string.years)
                             OptionStats.CONTINUOUS -> stringResource(id = R.string.continuous)
                         },
+                        color = Color.White
                     )
                 },
                 trailingIcon = {
                     Icon(
                         painter = painterResource(R.drawable.expand_more),
                         contentDescription = null,
+                        tint = Color.White,
                         modifier = Modifier.graphicsLayer(rotationZ = rotationAnimation),
                     )
                 },
                 shape = RoundedCornerShape(16.dp),
-                border = null,
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)),
                 colors = AssistChipDefaults.assistChipColors(
-                    containerColor = containerColor,
-                    labelColor = MaterialTheme.colorScheme.onSurface
+                    containerColor = Color.White.copy(alpha = 0.10f),
+                    labelColor = Color.White
                 )
             )
 
@@ -185,7 +198,7 @@ fun <Int> ChoiceChipsRow(
                 ) {
                     options.forEach { option ->
                         DropdownMenuItem(
-                            text = { Text(text = option.second) },
+                            text = { Text(text = option.second, color = Color.White) },
                             onClick = {
                                 onSelectionChange(option.first)
                                 expandIconDegree -= 180
@@ -212,14 +225,20 @@ fun <Int> ChoiceChipsRow(
                     Spacer(Modifier.width(8.dp))
 
                     FilterChip(
-                        label = { Text(label) },
+                        label = { Text(label, color = if (currentValue == value) Color.White else Color(0xFFD0D0D0)) },
                         selected = currentValue == value,
                         colors = FilterChipDefaults.filterChipColors(
-                            containerColor = containerColor,
+                            containerColor = Color.White.copy(alpha = 0.08f),
+                            selectedContainerColor = Color.White.copy(alpha = 0.20f),
+                            labelColor = Color(0xFFD0D0D0),
+                            selectedLabelColor = Color.White
                         ),
                         onClick = { onValueUpdate(value) },
                         shape = RoundedCornerShape(16.dp),
-                        border = null
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            if (currentValue == value) Color.White.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.15f)
+                        )
                     )
                 }
             }

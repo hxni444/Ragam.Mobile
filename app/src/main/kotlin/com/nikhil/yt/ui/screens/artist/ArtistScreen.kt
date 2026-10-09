@@ -16,6 +16,7 @@ import android.widget.Toast
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -597,16 +598,19 @@ fun ArtistScreen(
                         }
 
                         // Action Buttons
+                        val glassBg = Color.White.copy(alpha = 0.12f)
+                        val glassBorder = BorderStroke(1.dp, Color.White.copy(alpha = 0.20f))
+
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 24.dp, vertical = 8.dp),
                             horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
                         ) {
-                            // Subscribe/Following Button
+                            // Subscribe/Following Button (Glassmorphic)
                             val isSubscribed = libraryArtist?.artist?.bookmarkedAt != null
 
-                            FilledTonalButton(
+                            Surface(
                                 onClick = {
                                     database.transaction {
                                         val artist = libraryArtist?.artist
@@ -626,39 +630,44 @@ fun ArtistScreen(
                                         }
                                     }
                                 },
-                                colors = ButtonDefaults.filledTonalButtonColors(
-                                    containerColor = if (isSubscribed)
-                                        MaterialTheme.colorScheme.primaryContainer
-                                    else
-                                        MaterialTheme.colorScheme.secondaryContainer,
-                                    contentColor = if (isSubscribed)
-                                        MaterialTheme.colorScheme.onPrimaryContainer
-                                    else
-                                        MaterialTheme.colorScheme.onSecondaryContainer
-                                ),
                                 shape = RoundedCornerShape(24.dp),
+                                color = if (isSubscribed) Color.White.copy(alpha = 0.22f) else glassBg,
+                                border = glassBorder,
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(48.dp)
                             ) {
-                                Icon(
-                                    painter = painterResource(
-                                        if (isSubscribed) R.drawable.done else R.drawable.add
-                                    ),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = stringResource(
-                                        if (isSubscribed) R.string.subscribed else R.string.subscribe
-                                    ),
-                                    maxLines = 1
-                                )
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(
+                                                if (isSubscribed) R.drawable.done else R.drawable.add
+                                            ),
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = stringResource(
+                                                if (isSubscribed) R.string.subscribed else R.string.subscribe
+                                            ),
+                                            color = Color.White,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
                             }
 
-                            // Shuffle Button
-                            Button(
+                            // Shuffle Button (Glassmorphic)
+                            val shuffleEnabled = if (showLocal) librarySongs.isNotEmpty() else artistPage?.artist?.shuffleEndpoint != null
+                            Surface(
                                 onClick = {
                                     if (!showLocal) {
                                         artistPage?.artist?.shuffleEndpoint?.let { shuffleEndpoint ->
@@ -674,45 +683,75 @@ fun ArtistScreen(
                                         )
                                     }
                                 },
-                                enabled = if (showLocal) librarySongs.isNotEmpty() else artistPage?.artist?.shuffleEndpoint != null,
+                                enabled = shuffleEnabled,
                                 shape = RoundedCornerShape(24.dp),
+                                color = if (shuffleEnabled) glassBg else glassBg.copy(alpha = 0.05f),
+                                border = glassBorder,
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(48.dp)
                             ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.shuffle),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = stringResource(R.string.shuffle),
-                                    maxLines = 1
-                                )
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(R.drawable.shuffle),
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = stringResource(R.string.shuffle),
+                                            color = Color.White,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
                             }
                         }
 
-                        // Radio Button (for YouTube artists)
+                        // Radio Button (Glassmorphic)
                         if (!showLocal) {
                             artistPage?.artist?.radioEndpoint?.let { radioEndpoint ->
-                                OutlinedButton(
+                                Surface(
                                     onClick = {
                                         playerConnection.playQueue(YouTubeQueue(radioEndpoint))
                                     },
                                     shape = RoundedCornerShape(24.dp),
+                                    color = glassBg,
+                                    border = glassBorder,
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(horizontal = 24.dp, vertical = 8.dp)
                                         .height(44.dp)
                                 ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.radio),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(text = stringResource(R.string.radio))
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(R.drawable.radio),
+                                                contentDescription = null,
+                                                tint = Color.White,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = stringResource(R.string.radio),
+                                                color = Color.White
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }

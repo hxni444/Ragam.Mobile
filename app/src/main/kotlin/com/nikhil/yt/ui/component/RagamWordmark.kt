@@ -23,7 +23,7 @@ private val RagamBrandFontFamily = FontFamily(
 fun RagamWordmark(
     modifier: Modifier = Modifier,
     fontSize: TextUnit = 24.sp,
-    color: Color = MaterialTheme.colorScheme.primary,
+    color: Color = Color.White,
 ) {
     Text(
         text = "RAGAM",

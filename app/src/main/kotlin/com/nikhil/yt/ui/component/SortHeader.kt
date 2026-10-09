@@ -54,8 +54,9 @@ inline fun <reified T : Enum<T>> SortHeader(
     ) {
         Text(
             text = stringResource(sortTypeText(sortType)),
-            color = MaterialTheme.colorScheme.primary,
+            color = Color.White,
             style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Medium,
             modifier =
             Modifier
                 .clickable(
@@ -78,6 +79,7 @@ inline fun <reified T : Enum<T>> SortHeader(
                             text = stringResource(sortTypeText(type)),
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Normal,
+                            color = Color.White,
                         )
                     },
                     trailingIcon = {
@@ -93,6 +95,7 @@ inline fun <reified T : Enum<T>> SortHeader(
                                 },
                             ),
                             contentDescription = null,
+                            tint = Color.White,
                         )
                     },
                     onClick = {
@@ -114,7 +117,7 @@ inline fun <reified T : Enum<T>> SortHeader(
             if (allowDescending) {
                 ResizableIconButton(
                     icon = if (sortDescending) R.drawable.arrow_downward else R.drawable.arrow_upward,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = Color.White,
                     modifier =
                     Modifier
                         .size(32.dp)
