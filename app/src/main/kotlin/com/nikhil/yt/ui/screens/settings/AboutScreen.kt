@@ -130,6 +130,28 @@ fun AboutScreen(
                             fontWeight = FontWeight.SemiBold
                         )
                     }
+
+                    Spacer(Modifier.height(16.dp))
+
+                    Button(
+                        onClick = { navController.navigate("settings/update") },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFFF6A00),
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.update),
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = "Check for Updates",
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
 
                 Spacer(Modifier.height(24.dp))
@@ -183,7 +205,7 @@ fun AboutScreen(
                     iconRes = R.drawable.github,
                     title = "GitHub Repository",
                     subtitle = "View Ragam Mobile source code",
-                    onClick = { uriHandler.openUri("https://github.com/hxni444/Ragam") }
+                    onClick = { uriHandler.openUri("https://github.com/hxni444/Ragam.Mobile") }
                 )
                 Spacer(Modifier.height(24.dp))
 

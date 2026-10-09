@@ -57,11 +57,9 @@ jobs:
           cp app/build/outputs/apk/x86_64/release/app-x86_64-release.apk release_assets/app-x86_64-release.apk
           cp app/build/outputs/apk/x86/release/app-x86-release.apk release_assets/app-x86-release.apk
 
-      - name: Publish GitHub Release to Public Repo (hxni444/Ragam)
+      - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          repository: hxni444/Ragam
-          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
           tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
           name: Ragam Mobile ${{ github.event.inputs.tag_name || github.ref_name }}
           draft: false
@@ -73,3 +71,5 @@ jobs:
             release_assets/app-armeabi-release.apk
             release_assets/app-x86_64-release.apk
             release_assets/app-x86-release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

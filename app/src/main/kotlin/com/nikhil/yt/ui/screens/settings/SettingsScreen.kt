@@ -531,6 +531,24 @@ fun SettingsScreen(
 
                     add(
                         PremiumSettingsItem(
+                            icon = painterResource(R.drawable.update),
+                            title = stringResource(R.string.updates),
+                            subtitle = "Check for updates and changelog",
+                            accentColor = Color(0xFFFF6A00),
+                            keywords = listOf(
+                                "update",
+                                "version",
+                                "changelog",
+                                "release",
+                                "upgrade",
+                                "new",
+                            ),
+                            onClick = { navController.navigate("settings/update") },
+                        ),
+                    )
+
+                    add(
+                        PremiumSettingsItem(
                             icon = painterResource(R.drawable.info),
                             title = stringResource(R.string.about),
                             subtitle = "Ragam Mobile",

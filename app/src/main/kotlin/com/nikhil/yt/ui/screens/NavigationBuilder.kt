@@ -83,6 +83,7 @@ import com.nikhil.yt.ui.screens.settings.PlayerSettings
 import com.nikhil.yt.ui.screens.settings.PoTokenScreen
 import com.nikhil.yt.ui.screens.settings.PrivacySettings
 import com.nikhil.yt.ui.screens.settings.SettingsScreen
+import com.nikhil.yt.ui.screens.settings.UpdateScreen
 import com.nikhil.yt.ui.screens.settings.StorageSettings
 import com.nikhil.yt.ui.screens.settings.ThemeCreatorScreen
 import com.nikhil.yt.ui.utils.ShowMediaInfo
@@ -345,7 +346,10 @@ fun NavGraphBuilder.navigationBuilder(
     composable("settings/changelog") {
         ChangelogScreen(navController, scrollBehavior)
     }
-        composable("settings/about") {
+    composable("settings/update") {
+        UpdateScreen(navController, scrollBehavior)
+    }
+    composable("settings/about") {
         AboutScreen(navController, scrollBehavior)
     }
     composable("settings/po_token") {

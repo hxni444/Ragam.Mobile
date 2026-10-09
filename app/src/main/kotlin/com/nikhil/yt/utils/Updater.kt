@@ -88,7 +88,7 @@ object Updater {
         cachedEtag: String?,
     ): ReleasesNetworkResult {
         val response: HttpResponse =
-            client.get("https://api.github.com/repos/hxni444/Ragam/releases?per_page=$perPage") {
+            client.get("https://api.github.com/repos/hxni444/Ragam.Mobile/releases?per_page=$perPage") {
                 headers {
                     append("Accept", "application/vnd.github+json")
                     append("User-Agent", "Ragam")
@@ -123,17 +123,17 @@ object Updater {
             ?: emptyList()
     }
 
-    suspend fun getLatestVersionName(): Result<String> =
-        getLatestReleaseInfo().map { latest ->
+    suspend fun getLatestVersionName(forceRefresh: Boolean = true): Result<String> =
+        getLatestReleaseInfo(forceRefresh).map { latest ->
             latest.name.ifBlank { latest.tagName }
         }
 
-    suspend fun getLatestReleaseNotes(): Result<String?> =
-        getLatestReleaseInfo().map { it.body }
+    suspend fun getLatestReleaseNotes(forceRefresh: Boolean = false): Result<String?> =
+        getLatestReleaseInfo(forceRefresh).map { it.body }
 
-    suspend fun getLatestReleaseInfo(): Result<ReleaseInfo> =
+    suspend fun getLatestReleaseInfo(forceRefresh: Boolean = false): Result<ReleaseInfo> =
         runCatching {
-            val releases = getAllReleases().getOrThrow()
+            val releases = getAllReleases(forceRefresh = forceRefresh).getOrThrow()
             val latest = releases.firstOrNull()
                 ?: throw IllegalStateException("No releases found")
             lastCheckTime = System.currentTimeMillis()
@@ -143,7 +143,7 @@ object Updater {
     suspend fun getCommitHistory(count: Int = 20, branch: String = "main"): Result<List<GitCommit>> =
         runCatching {
             val response =
-                client.get("https://api.github.com/repos/hxni444/Ragam/commits?sha=$branch&per_page=$count")
+                client.get("https://api.github.com/repos/hxni444/Ragam.Mobile/commits?sha=$branch&per_page=$count")
                     .bodyAsText()
             val jsonArray = JSONArray(response)
             val commits = mutableListOf<GitCommit>()
@@ -165,7 +165,7 @@ object Updater {
         }
 
     fun getLatestDownloadUrl(): String {
-        val baseUrl = "https://github.com/hxni444/Ragam/releases/latest/download/"
+        val baseUrl = "https://github.com/hxni444/Ragam.Mobile/releases/latest/download/"
         val architecture = BuildConfig.ARCHITECTURE
         return if (architecture == "universal") {
             baseUrl + "Ragam.apk"
@@ -228,32 +228,32 @@ object Updater {
                     throw IllegalStateException("Release cache is empty")
                 }
 
-                networkResult.status.value in 200..299 && !networkResult.body.isNullOrBlank() -> {
-                    val networkBody = networkResult.body
-                    val releases = parseReleasesJson(networkBody)
+                networkResult.status.value in 200..299 -> {
+                    val networkBody = networkResult.body.orEmpty()
+                    val releases = if (networkBody.isNotBlank()) runCatching { parseReleasesJson(networkBody) }.getOrDefault(emptyList()) else emptyList()
                     val newFingerprint = getTopReleaseFingerprint(releases)
-                    val hasPayloadChanged = cachedJson != networkBody
-                    val hasTopReleaseChanged = cachedFingerprint != newFingerprint
 
                     App.instance.dataStore.edit { settings ->
                         settings[GitHubReleasesLastCheckedAtKey] = now
                         networkResult.etag?.let { settings[GitHubReleasesEtagKey] = it }
-                        if (hasPayloadChanged || hasTopReleaseChanged || cachedJson.isNullOrBlank()) {
-                            settings[GitHubReleasesJsonKey] = networkBody
-                            settings[GitHubReleasesFingerprintKey] = newFingerprint
-                        }
+                        settings[GitHubReleasesJsonKey] = networkBody
+                        settings[GitHubReleasesFingerprintKey] = newFingerprint
                     }
                     lastCheckTime = now
                     releases
                 }
 
                 else -> {
-                    val fallback = cachedReleases
-                    if (fallback != null) {
-                        lastCheckTime = now
-                        fallback
+                    if (forceRefresh) {
+                        emptyList()
                     } else {
-                        throw IllegalStateException("Failed to fetch releases: HTTP ${networkResult.status.value}")
+                        val fallback = cachedReleases
+                        if (fallback != null) {
+                            lastCheckTime = now
+                            fallback
+                        } else {
+                            emptyList()
+                        }
                     }
                 }
             }

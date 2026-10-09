@@ -120,7 +120,7 @@ fun StarDialog(
                         try {
                             val intent = Intent(
                                 Intent.ACTION_VIEW,
-                                Uri.parse("https://github.com/hxni444/Ragam")
+                                Uri.parse("https://github.com/hxni444/Ragam.Mobile")
                             )
                             context.startActivity(intent)
                         } catch (e: Exception) {
