@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
     <shortcut
         android:enabled="true"
@@ -6,9 +6,9 @@
         android:shortcutId="search"
         android:shortcutShortLabel="@string/search">
         <intent
-            android:action="com.nikhil.yt.action.SEARCH"
-            android:targetClass="com.nikhil.yt.MainActivity"
-            android:targetPackage="com.nikhil.yt" />
+            android:action="com.ragam.music.action.SEARCH"
+            android:targetClass="com.ragam.music.MainActivity"
+            android:targetPackage="com.ragam.music" />
     </shortcut>
     <shortcut
         android:enabled="true"
@@ -16,8 +16,8 @@
         android:shortcutId="library"
         android:shortcutShortLabel="@string/filter_library">
         <intent
-            android:action="com.nikhil.yt.action.LIBRARY"
-            android:targetClass="com.nikhil.yt.MainActivity"
-            android:targetPackage="com.nikhil.yt" />
+            android:action="com.ragam.music.action.LIBRARY"
+            android:targetClass="com.ragam.music.MainActivity"
+            android:targetPackage="com.ragam.music" />
     </shortcut>
 </shortcuts>

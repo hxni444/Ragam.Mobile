@@ -1,4 +1,4 @@
-# Add project specific ProGuard rules here.
+﻿# Add project specific ProGuard rules here.
 # You can control the set of applied configuration files using the
 # proguardFiles setting in build.gradle.kts.
 #
@@ -96,11 +96,11 @@
 
 ## Queue Persistence Rules
 # Keep queue-related classes to prevent serialization issues in release builds
--keep class com.nikhil.yt.models.PersistQueue { *; }
--keep class com.nikhil.yt.models.PersistPlayerState { *; }
--keep class com.nikhil.yt.models.QueueData { *; }
--keep class com.nikhil.yt.models.QueueType { *; }
--keep class com.nikhil.yt.playback.queues.** { *; }
+-keep class com.ragam.music.models.PersistQueue { *; }
+-keep class com.ragam.music.models.PersistPlayerState { *; }
+-keep class com.ragam.music.models.QueueData { *; }
+-keep class com.ragam.music.models.QueueType { *; }
+-keep class com.ragam.music.playback.queues.** { *; }
 
 # Keep serialization methods for queue persistence
 -keepclassmembers class * implements java.io.Serializable {

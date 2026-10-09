@@ -1,4 +1,4 @@
-
+﻿
 <div align="center">
 
  <img src="https://raw.githubusercontent.com/nikhilvishwakarma00/Velune/main/fastlane/metadata/android/en-US/images/icon.png" width="110" />
@@ -81,7 +81,7 @@ For your safety, download Velune only from the official GitHub releases
         </a>
       </td>
       <td align="center">
-        <a href="https://apt.izzysoft.de/fdroid/index/apk/com.nikhil.yt">
+        <a href="https://apt.izzysoft.de/fdroid/index/apk/com.ragam.music">
           <img src="assets/IzzyOnDroidButtonBorder.svg" height="50" alt="Get Velune on IzzyOnDroid">
         </a>
       </td>

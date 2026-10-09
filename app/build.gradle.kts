@@ -1,4 +1,4 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+﻿import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
 
 plugins {
@@ -16,11 +16,11 @@ if (localPropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.nikhil.yt"
+    namespace = "com.ragam.music"
     compileSdk = 36
 
     defaultConfig {
-    applicationId = "com.nikhil.yt"
+    applicationId = "com.ragam.music"
         minSdk = 26
         targetSdk = 36
         versionCode = 200
