@@ -150,8 +150,7 @@ fun HistoryScreen(
     }
 
     LaunchedEffect(isLoggedIn) {
-        if (isLoggedIn) {
-            viewModel.historySource.value = HistorySource.REMOTE
+        if (isLoggedIn && historyPage == null) {
             viewModel.fetchRemoteHistory()
         }
     }
@@ -324,6 +323,24 @@ fun HistoryScreen(
             modifier = Modifier
         ) {
             if (isLoggedIn) {
+                item {
+                    ChipsRow(
+                        chips = listOf(
+                            HistorySource.LOCAL to stringResource(R.string.local_history),
+                            HistorySource.REMOTE to stringResource(R.string.remote_history),
+                        ),
+                        currentValue = historySource,
+                        onValueUpdate = {
+                            viewModel.historySource.value = it
+                            if (it == HistorySource.REMOTE && historyPage == null) {
+                                viewModel.fetchRemoteHistory()
+                            }
+                        }
+                    )
+                }
+            }
+
+            if (historySource == HistorySource.REMOTE && isLoggedIn) {
                 if (isLoading && filteredRemoteContent.isNullOrEmpty()) {
                     item {
                         Box(
@@ -482,7 +499,7 @@ fun HistoryScreen(
         }
 
         HideOnScrollFAB(
-            visible = if (isLoggedIn) {
+            visible = if (historySource == HistorySource.REMOTE && isLoggedIn) {
                 filteredRemoteContent?.any { it.songs.isNotEmpty() } == true
             } else {
                 allWrappedItems.isNotEmpty()
@@ -490,7 +507,7 @@ fun HistoryScreen(
             lazyListState = lazyListState,
             icon = R.drawable.shuffle,
             onClick = {
-                if (isLoggedIn && historyPage != null) {
+                if (historySource == HistorySource.REMOTE && isLoggedIn && historyPage != null) {
                     val songs = filteredRemoteContent?.flatMap { it.songs } ?: emptyList()
                     if (songs.isNotEmpty()) {
                         playerConnection.playQueue(
