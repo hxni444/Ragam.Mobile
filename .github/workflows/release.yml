@@ -37,16 +37,22 @@ jobs:
       - name: Grant Execute Permission for Gradlew
         run: chmod +x ./gradlew
 
-      - name: Ensure Android Keystore Exists
+      - name: Setup Release Keystore
         run: |
-          mkdir -p ~/.android ~/.config/.android
-          if [ ! -f ~/.android/debug.keystore ]; then
+          mkdir -p app/keystore ~/.android ~/.config/.android
+          if [ -n "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" ]; then
+            echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > app/keystore/release.keystore
+          elif [ ! -f ~/.android/debug.keystore ]; then
             keytool -genkey -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+            cp -f ~/.android/debug.keystore ~/.config/.android/debug.keystore || true
           fi
-          cp -f ~/.android/debug.keystore ~/.config/.android/debug.keystore || true
 
       - name: Build Release APK (ARM64)
         run: ./gradlew assembleArm64Release --stacktrace
+        env:
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Prepare Release Artifacts
         run: |
