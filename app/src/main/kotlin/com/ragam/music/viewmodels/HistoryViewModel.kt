@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Velune - by Nikhil
  * Nikhil
  * Licensed Under GPL-3.0
@@ -41,6 +41,7 @@ constructor(
     private val lastMonday = thisMonday.minusDays(7)
 
     val historyPage = mutableStateOf<HistoryPage?>(null)
+    val isLoading = mutableStateOf(false)
 
     val events =
         database
@@ -78,10 +79,13 @@ constructor(
 
     fun fetchRemoteHistory() {
         viewModelScope.launch(Dispatchers.IO) {
+            isLoading.value = true
             YouTube.musicHistory().onSuccess {
                 historyPage.value = it
+                isLoading.value = false
             }.onFailure {
                 reportException(it)
+                isLoading.value = false
             }
         }
     }

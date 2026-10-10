@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Velune - by Nikhil
  * Nikhil
  * Licensed Under GPL-3.0
@@ -18,7 +18,9 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -86,6 +88,7 @@ import com.ragam.music.ui.component.IconButton
 import com.ragam.music.ui.component.LocalMenuState
 import com.ragam.music.ui.component.NavigationTitle
 import com.ragam.music.ui.component.SongListItem
+import com.ragam.music.ui.component.VeluneLoader
 import com.ragam.music.ui.component.YouTubeListItem
 import com.ragam.music.ui.menu.SelectionMediaMetadataMenu
 import com.ragam.music.ui.menu.SongMenu
@@ -138,11 +141,19 @@ fun HistoryScreen(
     val historySource by viewModel.historySource.collectAsState()
     val events by viewModel.events.collectAsState()
     val historyPage by viewModel.historyPage
+    val isLoading by viewModel.isLoading
 
     val (disableBlur) = rememberPreference(DisableBlurKey, true)
     val innerTubeCookie by rememberPreference(InnerTubeCookieKey, "")
     val isLoggedIn = remember(innerTubeCookie) {
         "SAPISID" in parseCookieString(innerTubeCookie)
+    }
+
+    LaunchedEffect(isLoggedIn) {
+        if (isLoggedIn) {
+            viewModel.historySource.value = HistorySource.REMOTE
+            viewModel.fetchRemoteHistory()
+        }
     }
 
     fun dateAgoToString(dateAgo: DateAgo): String {
@@ -312,85 +323,80 @@ fun HistoryScreen(
             contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
             modifier = Modifier
         ) {
-            item {
-                ChipsRow(
-                    chips = if (isLoggedIn) listOf(
-                        HistorySource.LOCAL to stringResource(R.string.local_history),
-                        HistorySource.REMOTE to stringResource(R.string.remote_history),
-                    ) else {
-                        listOf(HistorySource.LOCAL to stringResource(R.string.local_history))
-                    },
-                    currentValue = historySource,
-                    onValueUpdate = {
-                        viewModel.historySource.value = it
-                        if (it == HistorySource.REMOTE){
-                            viewModel.fetchRemoteHistory()
+            if (isLoggedIn) {
+                if (isLoading && filteredRemoteContent.isNullOrEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 64.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            VeluneLoader(size = 32.dp)
                         }
                     }
-                )
-            }
+                } else {
+                    filteredRemoteContent?.forEach { section ->
+                        stickyHeader {
+                            NavigationTitle(
+                                title = section.title,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(Color.Transparent)
+                            )
+                        }
 
-            if (historySource == HistorySource.REMOTE && isLoggedIn) {
-                filteredRemoteContent?.forEach { section ->
-                    stickyHeader {
-                        NavigationTitle(
-                            title = section.title,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(Color.Transparent)
-                        )
-                    }
-
-                    items(
-                        items = section.songs,
-                        key = { "${section.title}_${it.id}_${section.songs.indexOf(it)}" }
-                    ) { song ->
-                        YouTubeListItem(
-                            item = song,
-                            isActive = song.id == mediaMetadata?.id,
-                            isPlaying = isPlaying,
-                            trailingContent = {
-                                IconButton(
-                                    onClick = {
-                                        menuState.show {
-                                            YouTubeSongMenu(
-                                                song = song,
-                                                navController = navController,
-                                                onDismiss = menuState::dismiss
-                                            )
+                        items(
+                            items = section.songs,
+                            key = { "${section.title}_${it.id}_${section.songs.indexOf(it)}" }
+                        ) { song ->
+                            YouTubeListItem(
+                                item = song,
+                                isActive = song.id == mediaMetadata?.id,
+                                isPlaying = isPlaying,
+                                trailingContent = {
+                                    IconButton(
+                                        onClick = {
+                                            menuState.show {
+                                                YouTubeSongMenu(
+                                                    song = song,
+                                                    navController = navController,
+                                                    onDismiss = menuState::dismiss
+                                                )
+                                            }
                                         }
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(R.drawable.more_vert),
+                                            contentDescription = null
+                                        )
                                     }
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.more_vert),
-                                        contentDescription = null
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .combinedClickable(
+                                        onClick = {
+                                            if (song.id == mediaMetadata?.id) {
+                                                playerConnection.player.togglePlayPause()
+                                            } else {
+                                                playerConnection.playQueue(
+                                                    YouTubeQueue.radio(song.toMediaMetadata())
+                                                )
+                                            }
+                                        },
+                                        onLongClick = {
+                                            menuState.show {
+                                                YouTubeSongMenu(
+                                                    song = song,
+                                                    navController = navController,
+                                                    onDismiss = menuState::dismiss
+                                                )
+                                            }
+                                        }
                                     )
-                                }
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .combinedClickable(
-                                    onClick = {
-                                        if (song.id == mediaMetadata?.id) {
-                                            playerConnection.player.togglePlayPause()
-                                        } else {
-                                            playerConnection.playQueue(
-                                                YouTubeQueue.radio(song.toMediaMetadata())
-                                            )
-                                        }
-                                    },
-                                    onLongClick = {
-                                        menuState.show {
-                                            YouTubeSongMenu(
-                                                song = song,
-                                                navController = navController,
-                                                onDismiss = menuState::dismiss
-                                            )
-                                        }
-                                    }
-                                )
-                                .animateItem()
-                        )
+                                    .animateItem()
+                            )
+                        }
                     }
                 }
             } else {
@@ -476,7 +482,7 @@ fun HistoryScreen(
         }
 
         HideOnScrollFAB(
-            visible = if (historySource == HistorySource.REMOTE) {
+            visible = if (isLoggedIn) {
                 filteredRemoteContent?.any { it.songs.isNotEmpty() } == true
             } else {
                 allWrappedItems.isNotEmpty()
@@ -484,7 +490,7 @@ fun HistoryScreen(
             lazyListState = lazyListState,
             icon = R.drawable.shuffle,
             onClick = {
-                if (historySource == HistorySource.REMOTE && historyPage != null) {
+                if (isLoggedIn && historyPage != null) {
                     val songs = filteredRemoteContent?.flatMap { it.songs } ?: emptyList()
                     if (songs.isNotEmpty()) {
                         playerConnection.playQueue(

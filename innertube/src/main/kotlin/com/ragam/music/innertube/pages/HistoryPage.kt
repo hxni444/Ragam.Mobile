@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Velune Project Original (2026)
  * Kòi Natsuko (github.com/koiverse)
  * Licensed Under GPL-3.0 | see git history for contributors
@@ -26,18 +26,22 @@ data class HistoryPage(
     )
 
     companion object {
-        fun fromMusicShelfRenderer(renderer: MusicShelfRenderer): HistorySection {
+        fun fromMusicShelfRenderer(renderer: MusicShelfRenderer): HistorySection? {
+            val title = renderer.title?.runs?.firstOrNull()?.text ?: return null
+            val songs = renderer.contents?.getItems()?.mapNotNull {
+                fromMusicResponsiveListItemRenderer(it)
+            } ?: return null
             return HistorySection(
-                title = renderer.title?.runs?.firstOrNull()?.text!!,
-                songs = renderer.contents?.getItems()?.mapNotNull {
-                    fromMusicResponsiveListItemRenderer(it)
-                }!!
+                title = title,
+                songs = songs
             )
         }
 
         private fun fromMusicResponsiveListItemRenderer(renderer: MusicResponsiveListItemRenderer): SongItem? {
             return SongItem(
-                id = renderer.playlistItemData?.videoId ?: return null,
+                id = renderer.playlistItemData?.videoId
+                    ?: renderer.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint?.watchEndpoint?.videoId
+                    ?: return null,
                 title = renderer.flexColumns.firstOrNull()
                     ?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.firstOrNull()
                     ?.text ?: return null,
@@ -46,8 +50,13 @@ data class HistoryPage(
                         name = it.text,
                         id = it.navigationEndpoint?.browseEndpoint?.browseId
                     )
-                } ?: emptyList(),
-                album = renderer.flexColumns.getOrNull(3)?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.firstOrNull()?.let {
+                }.orEmpty(),
+                album = renderer.flexColumns.getOrNull(2)?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.firstOrNull()?.let {
+                    Album(
+                        name = it.text,
+                        id = it.navigationEndpoint?.browseEndpoint?.browseId ?: return@let null
+                    )
+                } ?: renderer.flexColumns.getOrNull(3)?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.firstOrNull()?.let {
                     Album(
                         name = it.text,
                         id = it.navigationEndpoint?.browseEndpoint?.browseId ?: return@let null
