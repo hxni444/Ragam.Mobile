@@ -126,3 +126,19 @@
 -dontwarn com.google.protobuf.**
 -keep class com.ragam.music.sync.** { *; }
 
+# Protocol Buffers & Firestore Reflection Rules
+-dontwarn com.squareup.okhttp.**
+-dontwarn io.grpc.**
+-keep class com.google.protobuf.** { *; }
+-keepclassmembers class * extends com.google.protobuf.GeneratedMessageLite {
+    <fields>;
+}
+-keep class com.google.firebase.** { *; }
+-keep class io.grpc.** { *; }
+-keepclassmembers enum * {
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
+}
+
+
+
