@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Velune - by Nikhil
  * Nikhil
  * Licensed Under GPL-3.0
@@ -68,6 +68,18 @@ fun IntegrationScreen(
         )
 
         
+
+        PreferenceGroupTitle(
+            title = "Device Sync",
+        )
+
+        PreferenceEntry(
+            title = { Text("Ragam Desktop Sync") },
+            icon = { Icon(painterResource(R.drawable.sync), null) },
+            onClick = {
+                navController.navigate("settings/sync")
+            },
+        )
 
         PreferenceGroupTitle(
             title = stringResource(R.string.scrobbling),

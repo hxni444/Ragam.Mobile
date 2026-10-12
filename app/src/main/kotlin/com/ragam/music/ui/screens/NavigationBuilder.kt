@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Velune - by Nikhil
  * Nikhil
  * Licensed Under GPL-3.0
@@ -335,6 +335,12 @@ fun NavGraphBuilder.navigationBuilder(
     }
     composable("settings/music_together") {
         MusicTogetherScreen(navController, scrollBehavior)
+    }
+    composable("settings/sync") {
+        com.ragam.music.sync.SyncScreen(navController = navController)
+    }
+    composable("sync") {
+        com.ragam.music.sync.SyncScreen(navController = navController)
     }
     composable("settings/lastfm") {
         LastFMSettings(navController, scrollBehavior)

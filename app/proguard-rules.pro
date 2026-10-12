@@ -1,4 +1,4 @@
-﻿# Add project specific ProGuard rules here.
+# Add project specific ProGuard rules here.
 # You can control the set of applied configuration files using the
 # proguardFiles setting in build.gradle.kts.
 #
@@ -119,3 +119,10 @@
 -keep class androidx.media3.** { *; }
 -keep interface androidx.media3.** { *; }
 -dontwarn androidx.media3.**
+
+## Firebase Firestore and Sync Rules
+-dontwarn com.google.rpc.**
+-dontwarn com.google.type.**
+-dontwarn com.google.protobuf.**
+-keep class com.ragam.music.sync.** { *; }
+

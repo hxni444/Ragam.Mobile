@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Velune - by Nikhil
  * Nikhil
  * Licensed Under GPL-3.0
@@ -140,6 +140,14 @@ fun AccountSettings(
     var showToken by remember { mutableStateOf(false) }
     var showTokenEditor by remember { mutableStateOf(false) }
     var showPlaylistDialog by remember { mutableStateOf(false) }
+    var showAuthModal by remember { mutableStateOf(false) }
+
+    val syncRepo = com.ragam.music.LocalMusicSyncRepository.current
+    val firebaseUser = remember(showAuthModal) { syncRepo.getCurrentFirebaseUser() }
+    var effectiveSyncId by remember { mutableStateOf("") }
+    LaunchedEffect(showAuthModal) {
+        effectiveSyncId = syncRepo.getActiveSyncId()
+    }
 
     val hasUpdate = false
 
@@ -172,6 +180,33 @@ fun AccountSettings(
                 onLogout = {
                     onInnerTubeCookieChange("")
                     forgetAccount(context)
+                }
+            )
+
+            // Ragam Cloud Sync (Firebase) Section
+            SettingsSection(title = "Ragam Cloud Sync") {
+                val isFirebaseLoggedIn = firebaseUser != null
+                SettingsClickableItem(
+                    icon = painterResource(R.drawable.desktop_windows),
+                    title = if (isFirebaseLoggedIn) "Firebase: ${firebaseUser.displayName.orEmpty().ifBlank { firebaseUser.email ?: "Account" }}" else "Connect / Pair with Desktop",
+                    subtitle = if (isFirebaseLoggedIn)
+                        "${firebaseUser.email.orEmpty()} • ID: $effectiveSyncId"
+                    else
+                        "Sync ID: ${effectiveSyncId.ifBlank { "Guest" }} • Tap to sign in or pair code",
+                    onClick = { showAuthModal = true }
+                )
+            }
+
+            com.ragam.music.ui.component.FirebaseAuthModal(
+                isOpen = showAuthModal,
+                onClose = { showAuthModal = false },
+                syncRepository = syncRepo,
+                onNavigateToYouTubeLogin = {
+                    onClose()
+                    navController.navigate("login")
+                },
+                onAuthSuccess = {
+                    showAuthModal = false
                 }
             )
 
@@ -261,6 +296,21 @@ fun AccountSettings(
                     onClick = {
                         onClose()
                         navController.navigate("settings/music_together")
+                    }
+                )
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(start = 56.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                )
+
+                SettingsClickableItem(
+                    icon = painterResource(R.drawable.sync),
+                    title = "Desktop Sync",
+                    subtitle = "Real-time playback and history sync",
+                    onClick = {
+                        onClose()
+                        navController.navigate("settings/sync")
                     }
                 )
             }

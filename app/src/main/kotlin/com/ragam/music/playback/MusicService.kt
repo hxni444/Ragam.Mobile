@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Velune - by Nikhil
  * Nikhil
  * Licensed Under GPL-3.0
@@ -242,6 +242,9 @@ class MusicService :
 
     @Inject
     lateinit var mediaLibrarySessionCallback: MediaLibrarySessionCallback
+
+    @Inject
+    lateinit var musicSyncRepository: com.ragam.music.sync.MusicSyncRepository
 
     private lateinit var audioManager: AudioManager
     private var audioFocusRequest: AudioFocusRequest? = null
@@ -1025,6 +1028,55 @@ class MusicService :
                 lastPresenceUpdateTime = now
                 true
             } else false
+        }
+    }
+
+    private var lastSyncedHistoryMediaId: String? = null
+
+    private fun syncPlaybackToCloud(isPlaying: Boolean? = null) {
+        val metadata = player.currentMetadata ?: return
+        val trackDto = com.ragam.music.sync.TrackDto(
+            id = metadata.id,
+            title = metadata.title,
+            artist = metadata.artists.joinToString(", ") { it.name },
+            album = metadata.album?.title.orEmpty(),
+            duration = metadata.duration.toLong(),
+            thumbnailUrl = metadata.thumbnailUrl.orEmpty()
+        )
+        val currentlyPlaying = isPlaying ?: player.isPlaying
+        val positionSec = (player.currentPosition.coerceAtLeast(0L)) / 1000.0
+
+        scope.launch(Dispatchers.IO) {
+            try {
+                musicSyncRepository.sendNowPlaying(
+                    track = trackDto,
+                    isPlaying = currentlyPlaying,
+                    positionSec = positionSec
+                )
+            } catch (e: Exception) {
+                Timber.tag("MusicService").v(e, "Failed to sync now playing to cloud")
+            }
+        }
+
+        if (currentlyPlaying && lastSyncedHistoryMediaId != metadata.id) {
+            lastSyncedHistoryMediaId = metadata.id
+            scope.launch(Dispatchers.IO) {
+                try {
+                    musicSyncRepository.sendTrackHistory(trackDto)
+                } catch (e: Exception) {
+                    Timber.tag("MusicService").v(e, "Failed to sync history to cloud")
+                }
+            }
+        }
+    }
+
+    private fun clearPlaybackFromCloud() {
+        scope.launch(Dispatchers.IO) {
+            try {
+                musicSyncRepository.clearNowPlaying()
+            } catch (e: Exception) {
+                Timber.tag("MusicService").v(e, "Failed to clear playback from cloud")
+            }
         }
     }
 
@@ -3528,6 +3580,7 @@ class MusicService :
     if (playbackState == Player.STATE_IDLE || playbackState == Player.STATE_ENDED) {
         crossfadeAudio?.stop(resetMainFade = true)
         scrobbleManager?.onSongStop()
+        clearPlaybackFromCloud()
     }
 
     if (!suppressAutoPlayback &&
@@ -3717,6 +3770,7 @@ class MusicService :
 
        if (events.containsAny(EVENT_TIMELINE_CHANGED, EVENT_POSITION_DISCONTINUITY)) {
             currentMediaMetadata.value = player.currentMetadata
+            syncPlaybackToCloud()
             scope.launch {
                 try {
                     val token = dataStore.get(DiscordTokenKey, "")
@@ -3775,6 +3829,8 @@ class MusicService :
                 isPlaying = isPlaying,
                 thumbnailUrl = currentMetadata?.thumbnailUrl
             )
+
+            syncPlaybackToCloud(isPlaying)
 
 
 
@@ -4581,6 +4637,7 @@ class MusicService :
             }
         } catch (_: Exception) {}
         try {
+            clearPlaybackFromCloud()
             mediaSession.release()
         } catch (_: Exception) {}
         try {

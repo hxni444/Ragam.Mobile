@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "976431641719",
+    "project_id": "layam-7b80f",
+    "storage_bucket": "layam-7b80f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:976431641719:android:ragammobile",
+        "android_client_info": {
+          "package_name": "com.ragam.music"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyChY1h4kml1hglDzIF-3K3iDKmugAUt5AU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:976431641719:android:ragammobiledebug",
+        "android_client_info": {
+          "package_name": "com.ragam.music.debug"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyChY1h4kml1hglDzIF-3K3iDKmugAUt5AU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

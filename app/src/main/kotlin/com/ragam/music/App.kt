@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Velune - by Nikhil
  * Nikhil
  * Licensed Under GPL-3.0
@@ -112,6 +112,21 @@ class App : Application(), SingletonImageLoader.Factory {
             apiKey = BuildConfig.LASTFM_API_KEY,
             secret = BuildConfig.LASTFM_SECRET
         )
+        try {
+            if (com.google.firebase.FirebaseApp.getApps(this).isEmpty()) {
+                val options = com.google.firebase.FirebaseOptions.Builder()
+                    .setApiKey("AIzaSyChY1h4kml1hglDzIF-3K3iDKmugAUt5AU")
+                    .setApplicationId("1:976431641719:android:ragammobile")
+                    .setProjectId("layam-7b80f")
+                    .setStorageBucket("layam-7b80f.firebasestorage.app")
+                    .setGcmSenderId("976431641719")
+                    .build()
+                com.google.firebase.FirebaseApp.initializeApp(this, options)
+                Timber.d("Firebase initialized with project layam-7b80f")
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error initializing Firebase")
+        }
     }
 
     private fun initializeDeferredAsync() {

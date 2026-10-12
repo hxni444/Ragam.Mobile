@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Velune - by Nikhil
  * Nikhil
  * Licensed Under GPL-3.0
@@ -34,7 +34,9 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -492,6 +494,30 @@ private fun FloatingMiniPlayerContent(
     val currentSong by playerConnection.currentSong.collectAsState(initial = null)
     val isLiked = currentSong?.song?.liked == true
     val database = LocalDatabase.current
+    val syncRepo = com.ragam.music.LocalMusicSyncRepository.current
+    val cloudNowPlaying by syncRepo.cloudNowPlaying.collectAsState()
+    val coroutineScope = rememberCoroutineScope()
+
+    val isRemote = mediaMetadata == null && cloudNowPlaying?.track != null
+    val cloudTrack = cloudNowPlaying?.track
+
+    val title = if (isRemote) cloudTrack?.title.orEmpty() else (mediaMetadata?.title ?: "Unknown Song")
+    val artist = if (isRemote) cloudTrack?.artist.orEmpty() else (mediaMetadata?.artists?.joinToString { it.name } ?: "Unknown Artist")
+    val thumbnailUrl = if (isRemote) cloudTrack?.thumbnailUrl else mediaMetadata?.thumbnailUrl
+    val remoteDevice = cloudNowPlaying?.deviceName?.ifBlank { "Desktop" } ?: "Desktop"
+
+    val elapsedSec = if (isRemote && cloudNowPlaying?.isPlaying == true && (cloudNowPlaying?.timestampMs ?: 0L) > 0L) {
+        ((System.currentTimeMillis() - cloudNowPlaying!!.timestampMs) / 1000.0).coerceAtLeast(0.0)
+    } else 0.0
+    val cloudPosSec = if (isRemote) ((cloudNowPlaying?.positionSec ?: 0.0) + elapsedSec) else 0.0
+    val cloudDurSec = if (isRemote) ((cloudTrack?.duration ?: 1L).coerceAtLeast(1L)).toDouble() else 1.0
+    val effectiveProgress = if (isRemote) {
+        (cloudPosSec / cloudDurSec).toFloat().coerceIn(0f, 1f)
+    } else {
+        (position.toFloat() / duration.coerceAtLeast(1L)).coerceIn(0f, 1f)
+    }
+    val effectiveIsPlaying = if (isRemote) (cloudNowPlaying?.isPlaying == true) else isPlaying
+
     val firstArtist = mediaMetadata?.artists?.firstOrNull()
     val libraryArtist by remember(firstArtist?.id) {
         firstArtist?.id?.let { database.artist(it) } ?: kotlinx.coroutines.flow.flowOf(null)
@@ -509,7 +535,7 @@ private fun FloatingMiniPlayerContent(
             contentAlignment = Alignment.Center
         ) {
             androidx.compose.material3.CircularProgressIndicator(
-                progress = { (position.toFloat() / duration.coerceAtLeast(1L)).coerceIn(0f, 1f) },
+                progress = { effectiveProgress },
                 modifier = Modifier.fillMaxSize(),
                 color = MaterialTheme.colorScheme.primary,
                 trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
@@ -517,24 +543,40 @@ private fun FloatingMiniPlayerContent(
             )
 
             coil3.compose.AsyncImage(
-                model = mediaMetadata?.thumbnailUrl,
+                model = thumbnailUrl,
                 contentDescription = null,
                 contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                 modifier = Modifier
                     .size(44.dp)
                     .clip(CircleShape)
-                    .clickable { playerConnection.player.togglePlayPause() }
+                    .clickable {
+                        if (isRemote) {
+                            coroutineScope.launch {
+                                syncRepo.updateRemotePlayback(isPlaying = !effectiveIsPlaying)
+                            }
+                        } else {
+                            playerConnection.player.togglePlayPause()
+                        }
+                    }
             )
 
-            if (!isPlaying || isLoading) {
+            if (!effectiveIsPlaying || (!isRemote && isLoading)) {
                 Box(
                     modifier = Modifier
                         .size(44.dp)
                         .background(Color.Black.copy(alpha = 0.5f), CircleShape)
-                        .clickable { playerConnection.player.togglePlayPause() },
+                        .clickable {
+                            if (isRemote) {
+                                coroutineScope.launch {
+                                    syncRepo.updateRemotePlayback(isPlaying = !effectiveIsPlaying)
+                                }
+                            } else {
+                                playerConnection.player.togglePlayPause()
+                            }
+                        },
                     contentAlignment = Alignment.Center
                 ) {
-                    if (isLoading) {
+                    if (!isRemote && isLoading) {
                         com.ragam.music.ui.component.VeluneLoader(size = 20.dp)
                     } else {
                         Icon(
@@ -554,7 +596,7 @@ private fun FloatingMiniPlayerContent(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = mediaMetadata?.title ?: "Unknown Song",
+                text = title,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -562,69 +604,126 @@ private fun FloatingMiniPlayerContent(
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 modifier = Modifier.basicMarquee()
             )
-            Text(
-                text = mediaMetadata?.artists?.joinToString { it.name } ?: "Unknown Artist",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                modifier = Modifier.basicMarquee()
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = artist,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false).basicMarquee()
+                )
+                if (isRemote) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "• 💻 $remoteDevice",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1
+                    )
+                }
+            }
         }
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(end = 4.dp)
-        ) {
-            val buttonModifier = Modifier
-                .size(36.dp)
-                .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f), CircleShape)
-                .clip(CircleShape)
+        if (isRemote) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(end = 4.dp)
+            ) {
+                val buttonModifier = Modifier
+                    .size(36.dp)
+                    .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f), CircleShape)
+                    .clip(CircleShape)
 
-            Box(
-                modifier = buttonModifier.clickable {
-                    firstArtist?.let { artistInfo ->
-                        artistInfo.id?.let { artistId ->
-                            database.transaction {
-                                val artist = libraryArtist?.artist
-                                if (artist != null) {
-                                    update(artist.toggleLike())
-                                } else {
-                                    insert(
-                                        ArtistEntity(
-                                            id = artistId,
-                                            name = artistInfo.name,
-                                            channelId = null,
-                                            thumbnailUrl = null,
-                                        ).toggleLike()
-                                    )
+                Box(
+                    modifier = buttonModifier.clickable {
+                        coroutineScope.launch {
+                            syncRepo.updateRemotePlayback(isPlaying = !effectiveIsPlaying)
+                        }
+                    },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(if (effectiveIsPlaying) R.drawable.pause else R.drawable.play),
+                        contentDescription = if (effectiveIsPlaying) "Pause Remote" else "Play Remote",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                Box(
+                    modifier = buttonModifier.clickable {
+                        coroutineScope.launch {
+                            syncRepo.clearNowPlaying()
+                        }
+                    },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.desktop_windows),
+                        contentDescription = "Desktop Stream",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+        } else {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(end = 4.dp)
+            ) {
+                val buttonModifier = Modifier
+                    .size(36.dp)
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f), CircleShape)
+                    .clip(CircleShape)
+
+                Box(
+                    modifier = buttonModifier.clickable {
+                        firstArtist?.let { artistInfo ->
+                            artistInfo.id?.let { artistId ->
+                                database.transaction {
+                                    val artistObj = libraryArtist?.artist
+                                    if (artistObj != null) {
+                                        update(artistObj.toggleLike())
+                                    } else {
+                                        insert(
+                                            ArtistEntity(
+                                                id = artistId,
+                                                name = artistInfo.name,
+                                                channelId = null,
+                                                thumbnailUrl = null,
+                                            ).toggleLike()
+                                        )
+                                    }
                                 }
                             }
                         }
-                    }
-                },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    painter = painterResource(if (isSubscribed) R.drawable.subscribed else R.drawable.person),
-                    contentDescription = "Artist",
-                    tint = if (isSubscribed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-            Box(
-                modifier = buttonModifier.clickable { playerConnection.toggleLike() },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    painter = painterResource(if (isLiked) R.drawable.favorite else R.drawable.favorite_border),
-                    contentDescription = "Like",
-                    tint = if (isLiked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp)
-                )
+                    },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(if (isSubscribed) R.drawable.subscribed else R.drawable.person),
+                        contentDescription = "Artist",
+                        tint = if (isSubscribed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                Box(
+                    modifier = buttonModifier.clickable { playerConnection.toggleLike() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(if (isLiked) R.drawable.favorite else R.drawable.favorite_border),
+                        contentDescription = "Like",
+                        tint = if (isLiked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         }
     }
 }
+
 
 

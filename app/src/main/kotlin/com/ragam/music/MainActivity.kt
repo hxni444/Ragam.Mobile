@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Velune - by Nikhil
  * Nikhil
  * Licensed Under GPL-3.0
@@ -249,6 +249,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var syncUtils: SyncUtils
+
+    @Inject
+    lateinit var musicSyncRepository: com.ragam.music.sync.MusicSyncRepository
 
     private lateinit var navController: NavHostController
     private var pendingIntent: Intent? = null
@@ -602,6 +605,7 @@ class MainActivity : ComponentActivity() {
                     val (_) = rememberSaveable { mutableStateOf("home") }
                     val currentRoute = navBackStackEntry?.destination?.route
                     val isYearInMusicScreen = currentRoute == "year_in_music"
+                    val cloudNowPlaying by musicSyncRepository.cloudNowPlaying.collectAsState()
 
                     val navigationItems = remember { Screens.MainScreens }
                     val (slimNav) = rememberPreference(SlimNavBarKey, defaultValue = false)
@@ -863,13 +867,19 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    LaunchedEffect(playerConnection) {
+                    LaunchedEffect(playerConnection, cloudNowPlaying) {
                         val player = playerConnection?.player ?: return@LaunchedEffect
                         val connection = playerConnection ?: return@LaunchedEffect
                         connection.queueRestoreCompleted.first { it }
                         if (player.currentMediaItem == null) {
-                            if (!playerBottomSheetState.isDismissed) {
-                                playerBottomSheetState.dismiss()
+                            if (cloudNowPlaying?.track != null) {
+                                if (!isYearInMusicScreen && playerBottomSheetState.isDismissed) {
+                                    playerBottomSheetState.collapseSoft()
+                                }
+                            } else {
+                                if (!playerBottomSheetState.isDismissed) {
+                                    playerBottomSheetState.dismiss()
+                                }
                             }
                         } else {
                             if (!isYearInMusicScreen && playerBottomSheetState.isDismissed) {
@@ -1011,6 +1021,7 @@ class MainActivity : ComponentActivity() {
                         LocalSyncUtils provides syncUtils,
                         LocalBottomSheetPageState provides bottomSheetPageState,
                         LocalMenuState provides menuState,
+                        LocalMusicSyncRepository provides musicSyncRepository,
                     ) {
                         Row {
                             AnimatedVisibility(useRail && shouldShowNavigationBar) {
@@ -1767,3 +1778,4 @@ val LocalPlayerAwareWindowInsets =
     compositionLocalOf<WindowInsets> { error("No WindowInsets provided") }
 val LocalDownloadUtil = staticCompositionLocalOf<DownloadUtil> { error("No DownloadUtil provided") }
 val LocalSyncUtils = staticCompositionLocalOf<SyncUtils> { error("No SyncUtils provided") }
+val LocalMusicSyncRepository = staticCompositionLocalOf<com.ragam.music.sync.MusicSyncRepository> { error("No MusicSyncRepository provided") }
