@@ -121,9 +121,8 @@
 -dontwarn androidx.media3.**
 
 ## Firebase Firestore and Sync Rules
--dontwarn com.google.rpc.**
--dontwarn com.google.type.**
--dontwarn com.google.protobuf.**
+-keep class com.google.type.** { *; }
+-keep class com.google.rpc.** { *; }
 -keep class com.ragam.music.sync.** { *; }
 
 # Protocol Buffers & Firestore Reflection Rules

@@ -170,9 +170,7 @@ ksp {
 
 dependencies {
     implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.firestore) {
-        exclude(group = "com.google.firebase", module = "protolite-well-known-types")
-    }
+    implementation(libs.firebase.firestore)
     implementation(libs.firebase.auth)
     implementation(libs.coroutines.play.services)
 
@@ -281,6 +279,7 @@ configurations.configureEach {
         "androidx.compose.ui:ui-util:${libs.versions.compose.get()}",
         "androidx.compose.ui:ui-tooling:${libs.versions.compose.get()}",
         "androidx.compose.animation:animation-graphics:${libs.versions.compose.get()}",
+        "com.google.protobuf:protobuf-javalite:3.25.5",
     )
 }
 
