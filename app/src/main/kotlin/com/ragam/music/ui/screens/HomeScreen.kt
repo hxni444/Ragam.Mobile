@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Velune - by Nikhil
  * Nikhil
  * Licensed Under GPL-3.0
@@ -120,7 +120,15 @@ fun HomeScreen(
     val isLoggedIn = remember(innerTubeCookie) {
         "SAPISID" in parseCookieString(innerTubeCookie)
     }
-    val url = if (isLoggedIn) accountImageUrl else null
+    val syncRepo = com.ragam.music.LocalMusicSyncRepository.current
+    val firebaseUser by syncRepo.currentUser.collectAsState()
+    val isFirebaseLoggedIn = firebaseUser != null
+    val isUserLoggedIn = isLoggedIn || isFirebaseLoggedIn
+    val effectiveAvatarUrl = firebaseUser?.photoUrl?.toString() ?: if (isLoggedIn) accountImageUrl else null
+    val effectiveAccountName = firebaseUser?.displayName?.takeIf { it.isNotBlank() }
+        ?: accountName?.takeIf { it.isNotBlank() && it != "Guest" }
+        ?: firebaseUser?.email ?: ""
+    val url = effectiveAvatarUrl
 
     val scope = rememberCoroutineScope()
     val lazylistState = rememberLazyListState()

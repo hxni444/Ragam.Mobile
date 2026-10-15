@@ -48,10 +48,20 @@ class MusicSyncRepository @Inject constructor(
     private val _cloudNowPlaying = MutableStateFlow<CloudNowPlayingState?>(null)
     val cloudNowPlaying: StateFlow<CloudNowPlayingState?> = _cloudNowPlaying.asStateFlow()
 
+    private val _currentUser = MutableStateFlow<FirebaseUser?>(null)
+    val currentUser: StateFlow<FirebaseUser?> = _currentUser.asStateFlow()
+
     private var activeNowPlayingListener: ListenerRegistration? = null
     private var lastObservedSyncId: String? = null
 
     init {
+        val initialUser = auth.currentUser
+        _currentUser.value = if (initialUser != null && !initialUser.isAnonymous) initialUser else null
+        auth.addAuthStateListener { firebaseAuth ->
+            val user = firebaseAuth.currentUser
+            _currentUser.value = if (user != null && !user.isAnonymous) user else null
+        }
+
         // Automatically start observing cloud playback on app startup
         scope.launch {
             ensureAuthenticated()
@@ -60,14 +70,22 @@ class MusicSyncRepository @Inject constructor(
     }
 
     /**
-     * Normalizes an email or UID to match Ragam Desktop's deterministic sync ID
+     * Normalizes an email or UID to match Ragam Desktop's deterministic sync ID:
+     * e.g. "hanialziya@gmail.com" -> "u_hanialziya_gmail_com"
      */
-    fun normalizeSyncId(email: String?, uid: String): String {
-        return if (!email.isNullOrBlank()) {
-            "u_" + email.trim().lowercase().replace(Regex("[^a-z0-9]"), "_")
-        } else {
-            uid
+    fun normalizeSyncId(email: String?, uid: String = ""): String {
+        val trimmedEmail = email?.trim()?.takeIf { it.isNotBlank() }
+        if (trimmedEmail != null) {
+            return "u_" + trimmedEmail.lowercase().replace(Regex("[^a-z0-9]"), "_")
         }
+        val trimmedUid = uid.trim().takeIf { it.isNotBlank() }
+        if (trimmedUid != null) {
+            if (trimmedUid.contains("@")) {
+                return "u_" + trimmedUid.lowercase().replace(Regex("[^a-z0-9]"), "_")
+            }
+            return trimmedUid
+        }
+        return ""
     }
 
     /**
@@ -87,11 +105,12 @@ class MusicSyncRepository @Inject constructor(
 
     /**
      * Resolves the deterministic sync ID matching Ragam Desktop:
-     * 1. Custom Sync ID / Pair code (e.g. "guest_yzzwtqfz" or custom email)
-     * 2. Custom Sync Email preference
-     * 3. Firebase Auth user email (if logged in with Email or Google)
-     * 4. YouTube Music account email stored in DataStore
-     * 5. Persistent device sync ID (formatted like Desktop: "guest_...")
+     * 1. Firebase Auth user email (if logged in with Email, Google, etc.) -> "u_<email>"
+     * 2. YouTube Music account email stored in DataStore -> "u_<email>"
+     * 3. Custom Sync Email preference -> "u_<email>"
+     * 4. Custom Sync ID / Pair code (e.g. pair code "guest_y7qp3oqq" or custom sync ID)
+     * 5. Firebase Auth UID (if non-anonymous)
+     * 6. Persistent guest device ID (matching Ragam Desktop's persistent fallback: "guest_...")
      */
     suspend fun getActiveSyncId(): String {
         ensureAuthenticated()
@@ -102,40 +121,44 @@ class MusicSyncRepository @Inject constructor(
             null
         }
 
-        // 1. Manually specified custom sync ID or device code
-        val customId = prefs?.get(CustomSyncIdKey)?.trim()?.takeIf { it.isNotBlank() }
-        if (!customId.isNullOrBlank()) {
-            val resolved = if (customId.contains("@")) normalizeSyncId(customId, "") else customId
-            Timber.tag("MusicSync").d("Resolved sync ID from CustomSyncIdKey: $resolved")
-            return resolved
-        }
-
-        // 2. Custom sync email preference
-        val customEmail = prefs?.get(CustomSyncEmailKey)?.trim()?.takeIf { it.isNotBlank() }
-        if (!customEmail.isNullOrBlank()) {
-            val resolved = normalizeSyncId(customEmail, "")
-            Timber.tag("MusicSync").d("Resolved sync ID from CustomSyncEmail: $resolved")
-            return resolved
-        }
-
-        // 3. Firebase Auth user (if authenticated with real email)
         val authUser = auth.currentUser
-        if (authUser != null && !authUser.isAnonymous && !authUser.email.isNullOrBlank()) {
-            val resolved = normalizeSyncId(authUser.email, authUser.uid)
+        val isFirebaseUserLoggedIn = authUser != null && !authUser.isAnonymous
+        val firebaseEmail = authUser?.email?.trim()?.takeIf { it.isNotBlank() }
+
+        val accountEmail = prefs?.get(AccountEmailKey)?.trim()?.takeIf { it.isNotBlank() }
+        val customEmail = prefs?.get(CustomSyncEmailKey)?.trim()?.takeIf { it.isNotBlank() }
+        val customId = prefs?.get(CustomSyncIdKey)?.trim()?.takeIf { it.isNotBlank() }
+
+        // 1. Firebase Auth user email (if authenticated with real email) -> "u_<email>"
+        if (isFirebaseUserLoggedIn && !firebaseEmail.isNullOrBlank()) {
+            val resolved = normalizeSyncId(firebaseEmail)
             Timber.tag("MusicSync").d("Resolved sync ID from Firebase Auth email: $resolved")
             return resolved
         }
 
-        // 4. YouTube Music account email
-        val accountEmail = prefs?.get(AccountEmailKey)?.trim()?.takeIf { it.isNotBlank() }
+        // 2. YouTube Music account email -> "u_<email>"
         if (!accountEmail.isNullOrBlank()) {
-            val resolved = normalizeSyncId(accountEmail, authUser?.uid ?: "")
+            val resolved = normalizeSyncId(accountEmail)
             Timber.tag("MusicSync").d("Resolved sync ID from AccountEmailKey: $resolved")
             return resolved
         }
 
-        // 5. Firebase Auth UID (if non-anonymous)
-        if (authUser != null && !authUser.isAnonymous && authUser.uid.isNotBlank()) {
+        // 3. Custom sync email preference -> "u_<email>"
+        if (!customEmail.isNullOrBlank()) {
+            val resolved = normalizeSyncId(customEmail)
+            Timber.tag("MusicSync").d("Resolved sync ID from CustomSyncEmail: $resolved")
+            return resolved
+        }
+
+        // 4. Manually specified custom sync ID or desktop device pair code
+        if (!customId.isNullOrBlank()) {
+            val resolved = if (customId.contains("@")) normalizeSyncId(customId) else customId
+            Timber.tag("MusicSync").d("Resolved sync ID from CustomSyncIdKey: $resolved")
+            return resolved
+        }
+
+        // 5. Firebase Auth UID (if non-anonymous without email)
+        if (isFirebaseUserLoggedIn && !authUser.uid.isNullOrBlank()) {
             return authUser.uid
         }
 
@@ -257,7 +280,16 @@ class MusicSyncRepository @Inject constructor(
         return try {
             val result = auth.signInWithEmailAndPassword(email.trim(), pass).await()
             val user = result.user ?: throw IllegalStateException("Firebase user was null after sign-in")
+            try {
+                context.dataStore.edit { prefs ->
+                    val existing = prefs[CustomSyncIdKey]
+                    if (existing?.startsWith("guest_") == true) {
+                        prefs.remove(CustomSyncIdKey)
+                    }
+                }
+            } catch (_: Exception) {}
             startObservingCloudNowPlaying()
+            _currentUser.value = user
             Result.success(user)
         } catch (e: Exception) {
             Timber.tag("MusicSync").e(e, "Firebase login failed")
@@ -288,7 +320,16 @@ class MusicSyncRepository @Inject constructor(
                 .build()
 
             user.updateProfile(profileUpdates).await()
+            try {
+                context.dataStore.edit { prefs ->
+                    val existing = prefs[CustomSyncIdKey]
+                    if (existing?.startsWith("guest_") == true) {
+                        prefs.remove(CustomSyncIdKey)
+                    }
+                }
+            } catch (_: Exception) {}
             startObservingCloudNowPlaying()
+            _currentUser.value = user
             Result.success(user)
         } catch (e: Exception) {
             Timber.tag("MusicSync").e(e, "Firebase registration failed")
@@ -302,10 +343,17 @@ class MusicSyncRepository @Inject constructor(
     suspend fun logoutFromFirebase() {
         try {
             auth.signOut()
+            _currentUser.value = null
             ensureAuthenticated()
             startObservingCloudNowPlaying()
         } catch (e: Exception) {
             Timber.tag("MusicSync").e(e, "Failed to sign out of Firebase")
+        }
+    }
+
+    fun signOut() {
+        scope.launch {
+            logoutFromFirebase()
         }
     }
 
@@ -341,6 +389,8 @@ class MusicSyncRepository @Inject constructor(
             "volume" to 1.0,
             "repeatMode" to "off",
             "isShuffle" to false,
+            "remoteCommand" to null,
+            "remoteCommandFrom" to null,
             "updatedAt" to FieldValue.serverTimestamp()
         )
 
@@ -449,7 +499,7 @@ class MusicSyncRepository @Inject constructor(
     /**
      * Sends playback command to Desktop (Play/Pause, Seek, etc.)
      */
-    suspend fun updateRemotePlayback(isPlaying: Boolean? = null, positionSec: Double? = null) {
+    suspend fun updateRemotePlayback(isPlaying: Boolean? = null, positionSec: Double? = null, command: String? = null) {
         val syncId = getActiveSyncId()
         val docRef = firestore.collection("users")
             .document(syncId)
@@ -465,6 +515,14 @@ class MusicSyncRepository @Inject constructor(
             updates["positionSec"] = positionSec
             updates["timestampMs"] = System.currentTimeMillis()
         }
+        if (command != null) {
+            updates["remoteCommand"] = command
+            updates["remoteCommandFrom"] = "Ragam Mobile (" + android.os.Build.MODEL + ")"
+        } else {
+            updates["remoteCommand"] = FieldValue.delete()
+            updates["remoteCommandFrom"] = FieldValue.delete()
+        }
+        updates["commandTimestampMs"] = System.currentTimeMillis()
 
         if (updates.isNotEmpty()) {
             try {
@@ -502,7 +560,10 @@ class MusicSyncRepository @Inject constructor(
             deviceName = data["deviceName"]?.toString().orEmpty(),
             volume = (data["volume"] as? Number)?.toDouble() ?: 1.0,
             repeatMode = data["repeatMode"]?.toString().orEmpty(),
-            isShuffle = data["isShuffle"] as? Boolean ?: false
+            isShuffle = data["isShuffle"] as? Boolean ?: false,
+            remoteCommand = data["remoteCommand"]?.toString(),
+            remoteCommandFrom = data["remoteCommandFrom"]?.toString(),
+            commandTimestampMs = (data["commandTimestampMs"] as? Number)?.toLong() ?: 0L
         )
     }
 

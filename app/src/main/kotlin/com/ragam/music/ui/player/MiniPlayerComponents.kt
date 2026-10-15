@@ -49,8 +49,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -74,11 +76,15 @@ import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import com.ragam.music.R
 import com.ragam.music.constants.MiniPlayerHeight
 import com.ragam.music.extensions.togglePlayPause
-
 import com.ragam.music.models.MediaMetadata
+import com.ragam.music.playback.queues.YouTubeQueue
+import com.ragam.music.LocalMusicSyncRepository
+
 import com.ragam.music.playback.PlayerConnection
 import com.ragam.music.together.TogetherSessionState
 import kotlin.math.absoluteValue
@@ -236,16 +242,19 @@ fun MiniPlayerPlayPauseButton(
     isPlaying: Boolean,
     playbackState: Int,
     isLoading: Boolean,
-    playerConnection: PlayerConnection
+    playerConnection: PlayerConnection,
+    isRemote: Boolean = false,
+    onRemotePlayPause: (() -> Unit)? = null,
+    modifier: Modifier = Modifier
 ) {
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier.size(48.dp)
+        modifier = modifier.size(48.dp)
     ) {
         // Circular progress indicator around the play button
         if (duration > 0) {
             CircularProgressIndicator(
-                progress = { (position.toFloat()/ duration.toFloat()).coerceIn(0f, 1f) },
+                progress = { (position.toFloat() / duration.toFloat()).coerceIn(0f, 1f) },
                 modifier = Modifier.size(48.dp),
                 color = MaterialTheme.colorScheme.primary,
                 strokeWidth = 3.dp,
@@ -265,7 +274,9 @@ fun MiniPlayerPlayPauseButton(
                     shape = CircleShape
                 )
                 .clickable {
-                    if (playbackState == Player.STATE_ENDED) {
+                    if (isRemote) {
+                        onRemotePlayPause?.invoke()
+                    } else if (playbackState == Player.STATE_ENDED) {
                         playerConnection.player.seekTo(0, 0)
                         playerConnection.player.playWhenReady = true
                     } else {
@@ -273,20 +284,12 @@ fun MiniPlayerPlayPauseButton(
                     }
                 }
         ) {
-            // Placeholder: The actual image background logic was intricate inside NewMiniPlayer,
-            // but here we just simplify or expect it passed? 
-            // In the original NewMiniPlayer, it was just a border and clickable, NO image actually shown in this specific box in the new design?
-            // Wait, NewMiniPlayer lines 282+ had `Box`.
-            // Ah, the image was the BACKGROUND of the main box in some designs, but here it's "Play/Pause button with thumbnail background" comment.
-            // But checking the code, it's just a Box with border. 
-            // The icon is inside.
-            
             if (isLoading) {
                 VeluneLoader(size = 20.dp)
             } else {
                 Icon(
                     painter = painterResource(
-                        if (playbackState == Player.STATE_ENDED) {
+                        if (!isRemote && playbackState == Player.STATE_ENDED) {
                             R.drawable.replay
                         } else if (isPlaying) {
                             R.drawable.pause
@@ -383,6 +386,35 @@ fun NewMiniPlayerContent(
     val isLiked = currentSong?.song?.liked == true
     var showAddToPlaylistDialog by rememberSaveable { mutableStateOf(false) }
 
+    val syncRepo = LocalMusicSyncRepository.current
+    val cloudNowPlaying by syncRepo.cloudNowPlaying.collectAsState()
+    val isFromDesktop = cloudNowPlaying?.deviceName?.contains("Desktop", ignoreCase = true) == true ||
+        (cloudNowPlaying?.deviceName?.isNotBlank() == true && !cloudNowPlaying?.deviceName.orEmpty().contains("Mobile", ignoreCase = true))
+    val isRemote = (cloudNowPlaying?.track != null) && isFromDesktop && (!isPlaying || cloudNowPlaying?.isPlaying == true)
+    val cloudTrack = cloudNowPlaying?.track
+    val remoteDevice = cloudNowPlaying?.deviceName?.ifBlank { "Desktop" } ?: "Desktop"
+    val effectiveIsPlaying = if (isRemote) (cloudNowPlaying?.isPlaying == true) else isPlaying
+
+    var remoteTickerSec by remember { mutableDoubleStateOf(0.0) }
+    LaunchedEffect(isRemote, cloudNowPlaying?.isPlaying, cloudNowPlaying?.timestampMs, cloudNowPlaying?.positionSec) {
+        if (isRemote && cloudNowPlaying?.isPlaying == true) {
+            val baseTime = cloudNowPlaying?.timestampMs ?: System.currentTimeMillis()
+            val basePos = cloudNowPlaying?.positionSec ?: 0.0
+            val maxDur = (cloudTrack?.duration ?: 1L).toDouble()
+            while (isActive) {
+                val elapsed = ((System.currentTimeMillis() - baseTime) / 1000.0).coerceAtLeast(0.0)
+                remoteTickerSec = (basePos + elapsed).coerceAtMost(maxDur)
+                delay(250)
+            }
+        } else if (isRemote) {
+            remoteTickerSec = cloudNowPlaying?.positionSec ?: 0.0
+        }
+    }
+    val cloudPosSec = if (isRemote) remoteTickerSec else 0.0
+    val cloudDurSec = if (isRemote) ((cloudTrack?.duration ?: 1L).coerceAtLeast(1L)).toDouble() else 1.0
+    val effectivePosition = if (isRemote) (cloudPosSec * 1000.0).toLong() else position
+    val effectiveDuration = if (isRemote) (cloudDurSec * 1000.0).toLong() else duration
+
     mediaMetadata?.let { meta ->
         if (showAddToPlaylistDialog) {
             com.ragam.music.ui.menu.AddToPlaylistDialog(
@@ -415,67 +447,125 @@ fun NewMiniPlayerContent(
     ) {
         // Play/Pause bubble button (left side)
         MiniPlayerPlayPauseButton(
-            position = position,
-            duration = duration,
-            isPlaying = isPlaying,
+            position = effectivePosition,
+            duration = effectiveDuration,
+            isPlaying = effectiveIsPlaying,
             playbackState = playbackState,
-            isLoading = isLoading,
-            playerConnection = playerConnection
+            isLoading = if (isRemote) false else isLoading,
+            playerConnection = playerConnection,
+            isRemote = isRemote,
+            onRemotePlayPause = {
+                coroutineScope.launch {
+                    syncRepo.updateRemotePlayback(isPlaying = !effectiveIsPlaying)
+                }
+            }
         )
 
         Spacer(modifier = Modifier.width(12.dp))
 
-        // Title and Artist
-        mediaMetadata?.let {
-            MiniPlayerInfo(mediaMetadata = it)
-        } ?: Spacer(Modifier.weight(1f))
-
-        Spacer(modifier = Modifier.width(8.dp))
-
-        // + (Add to Playlist) Button
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(38.dp)
-                .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.08f))
-                .border(
-                    width = 1.dp,
-                    color = Color.White.copy(alpha = 0.16f),
-                    shape = CircleShape
+        // Title and Artist (Remote or Local)
+        if (isRemote && cloudTrack != null) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 4.dp),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = cloudTrack.title.ifBlank { "Unknown Title" },
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.basicMarquee()
                 )
-                .clickable { showAddToPlaylistDialog = true }
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.add),
-                contentDescription = "Add to playlist",
-                tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(20.dp)
-            )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = cloudTrack.artist.ifBlank { "Unknown Artist" },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false).basicMarquee()
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "• $remoteDevice",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1
+                    )
+                }
+            }
+        } else {
+            mediaMetadata?.let {
+                MiniPlayerInfo(mediaMetadata = it)
+            } ?: Spacer(Modifier.weight(1f))
         }
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        // Heart (Favorite) Button
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(38.dp)
-                .clip(CircleShape)
-                .background(if (isLiked) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.08f))
-                .border(
-                    width = 1.dp,
-                    color = if (isLiked) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.16f),
-                    shape = CircleShape
+        if (isRemote && cloudTrack != null) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .padding(end = 6.dp)
+                    .size(38.dp)
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.desktop_windows),
+                    contentDescription = "Playing on Desktop",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(22.dp)
                 )
-                .clickable { playerConnection.toggleLike() }
-        ) {
-            Icon(
-                painter = painterResource(if (isLiked) R.drawable.favorite else R.drawable.favorite_border),
-                contentDescription = if (isLiked) "Unlike" else "Like",
-                tint = if (isLiked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(20.dp)
-            )
+            }
+        } else {
+            // + (Add to Playlist) Button
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.08f))
+                    .border(
+                        width = 1.dp,
+                        color = Color.White.copy(alpha = 0.16f),
+                        shape = CircleShape
+                    )
+                    .clickable { showAddToPlaylistDialog = true }
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.add),
+                    contentDescription = "Add to playlist",
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // Heart (Favorite) Button
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .background(if (isLiked) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.08f))
+                    .border(
+                        width = 1.dp,
+                        color = if (isLiked) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.16f),
+                        shape = CircleShape
+                    )
+                    .clickable { playerConnection.toggleLike() }
+            ) {
+                Icon(
+                    painter = painterResource(if (isLiked) R.drawable.favorite else R.drawable.favorite_border),
+                    contentDescription = if (isLiked) "Unlike" else "Like",
+                    tint = if (isLiked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
     }
 }

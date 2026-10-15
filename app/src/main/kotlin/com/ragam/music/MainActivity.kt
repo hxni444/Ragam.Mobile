@@ -634,9 +634,17 @@ class MainActivity : ComponentActivity() {
                     val isLoggedIn = remember(innerTubeCookie) {
                         "SAPISID" in parseCookieString(innerTubeCookie)
                     }
+                    val firebaseUser by musicSyncRepository.currentUser.collectAsState()
+                    val isFirebaseLoggedIn = firebaseUser != null
+                    val isUserLoggedIn = isLoggedIn || isFirebaseLoggedIn
                     val accountImageUrl by homeViewModel.accountImageUrl.collectAsState()
                     val accountName by homeViewModel.accountName.collectAsState()
+                    val effectiveAvatarUrl = firebaseUser?.photoUrl?.toString() ?: if (isLoggedIn) accountImageUrl else null
+                    val effectiveAccountName = firebaseUser?.displayName?.takeIf { it.isNotBlank() }
+                        ?: accountName?.takeIf { it.isNotBlank() && it != "Guest" }
+                        ?: firebaseUser?.email
                     var accountMenuExpanded by remember { mutableStateOf(false) }
+                    var showAuthModal by remember { mutableStateOf(false) }
 
                     val (query, onQueryChange) =
                         rememberSaveable(stateSaver = TextFieldValue.Saver) {
@@ -1140,16 +1148,16 @@ class MainActivity : ComponentActivity() {
                                                 },
 
                                                 actions = {
-                                                    if (isLoggedIn) {
+                                                    if (isUserLoggedIn) {
                                                         Box {
                                                             IconButton(
                                                                 onClick = { accountMenuExpanded = true },
                                                                 modifier = Modifier.size(38.dp)
                                                             ) {
-                                                                if (!accountImageUrl.isNullOrBlank()) {
+                                                                if (!effectiveAvatarUrl.isNullOrBlank()) {
                                                                     AsyncImage(
-                                                                        model = accountImageUrl,
-                                                                        contentDescription = accountName ?: "Account",
+                                                                        model = effectiveAvatarUrl,
+                                                                        contentDescription = effectiveAccountName ?: "Account",
                                                                         contentScale = ContentScale.Crop,
                                                                         modifier = Modifier
                                                                             .size(28.dp)
@@ -1182,18 +1190,20 @@ class MainActivity : ComponentActivity() {
                                                                     .background(Color(0xFF161618))
                                                                     .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(16.dp))
                                                             ) {
-                                                                if (!accountName.isNullOrBlank() && accountName != "Guest") {
+                                                                if (!effectiveAccountName.isNullOrBlank()) {
                                                                     DropdownMenuItem(
                                                                         text = {
                                                                             Column {
                                                                                 Text(
-                                                                                    text = accountName ?: "",
+                                                                                    text = effectiveAccountName ?: "",
                                                                                     style = MaterialTheme.typography.titleMedium,
                                                                                     fontWeight = FontWeight.Bold,
                                                                                     color = Color.White
                                                                                 )
                                                                                 Text(
-                                                                                    text = "Logged in",
+                                                                                    text = if (isFirebaseLoggedIn && isLoggedIn) "Firebase & YouTube"
+                                                                                        else if (isFirebaseLoggedIn) "Ragam Cloud Sync"
+                                                                                        else "YouTube Music",
                                                                                     style = MaterialTheme.typography.bodySmall,
                                                                                     color = Color(0xFFAAAAAA)
                                                                                 )
@@ -1209,6 +1219,27 @@ class MainActivity : ComponentActivity() {
                                                                         modifier = Modifier.padding(vertical = 4.dp)
                                                                     )
                                                                 }
+
+                                                                DropdownMenuItem(
+                                                                    text = {
+                                                                        Text(
+                                                                            text = "Cloud Sync",
+                                                                            color = Color.White
+                                                                        )
+                                                                    },
+                                                                    leadingIcon = {
+                                                                        Icon(
+                                                                            painter = painterResource(R.drawable.desktop_windows),
+                                                                            contentDescription = null,
+                                                                            tint = Color.White,
+                                                                            modifier = Modifier.size(20.dp)
+                                                                        )
+                                                                    },
+                                                                    onClick = {
+                                                                        accountMenuExpanded = false
+                                                                        showAuthModal = true
+                                                                    }
+                                                                )
 
                                                                 DropdownMenuItem(
                                                                     text = {
@@ -1249,15 +1280,20 @@ class MainActivity : ComponentActivity() {
                                                                     },
                                                                     onClick = {
                                                                         accountMenuExpanded = false
-                                                                        onInnerTubeCookieChange("")
-                                                                        App.forgetAccount(this@MainActivity)
+                                                                        if (isFirebaseLoggedIn) {
+                                                                            musicSyncRepository.signOut()
+                                                                        }
+                                                                        if (isLoggedIn) {
+                                                                            onInnerTubeCookieChange("")
+                                                                            App.forgetAccount(this@MainActivity)
+                                                                        }
                                                                         Toast.makeText(this@MainActivity, "Logged out", Toast.LENGTH_SHORT).show()
                                                                     }
                                                                 )
                                                             }
                                                         }
                                                     } else {
-                                                        IconButton(onClick = { navController.navigate("login") }) {
+                                                        IconButton(onClick = { showAuthModal = true }) {
                                                             Icon(
                                                                 painter = painterResource(R.drawable.login),
                                                                 contentDescription = "Login",
@@ -1656,6 +1692,19 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         }
+
+                        com.ragam.music.ui.component.FirebaseAuthModal(
+                            isOpen = showAuthModal,
+                            onClose = { showAuthModal = false },
+                            syncRepository = musicSyncRepository,
+                            onNavigateToYouTubeLogin = {
+                                showAuthModal = false
+                                navController.navigate("login")
+                            },
+                            onAuthSuccess = {
+                                showAuthModal = false
+                            }
+                        )
                     }
 
                     LaunchedEffect(shouldShowSearchBar, openSearchImmediately) {

@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Velune - by Nikhil
  * Nikhil
  * Licensed Under GPL-3.0
@@ -219,6 +219,14 @@ fun SettingsScreen(
     val isLoggedIn = remember(innerTubeCookie) {
         "SAPISID" in parseCookieString(innerTubeCookie)
     }
+    val syncRepo = com.ragam.music.LocalMusicSyncRepository.current
+    val firebaseUser by syncRepo.currentUser.collectAsState()
+    val isFirebaseLoggedIn = firebaseUser != null
+    val isUserLoggedIn = isLoggedIn || isFirebaseLoggedIn
+    val effectiveAvatarUrl = firebaseUser?.photoUrl?.toString() ?: if (isLoggedIn) accountImageUrl else null
+    val effectiveAccountName = firebaseUser?.displayName?.takeIf { it.isNotBlank() }
+        ?: accountName?.takeIf { it.isNotBlank() && it != "Guest" }
+        ?: firebaseUser?.email ?: "Guest"
 
     var isSearching by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf(TextFieldValue()) }
@@ -801,16 +809,20 @@ fun SettingsScreen(
                                 ),
                     ) {
                         SettingsAccountCard(
-                            isLoggedIn = isLoggedIn,
-                            accountName = accountName ?:"Guest",
-                            accountImageUrl = accountImageUrl,
+                            isLoggedIn = isUserLoggedIn,
+                            accountName = effectiveAccountName,
+                            accountImageUrl = effectiveAvatarUrl,
                             onAccountClick = {
-                                if (isLoggedIn) navController.navigate("settings/account")
-                                else navController.navigate("login")
+                                navController.navigate("settings/account")
                             },
                             onLogout = {
-                                onInnerTubeCookieChange("")
-                                forgetAccount(context)
+                                if (isFirebaseLoggedIn) {
+                                    syncRepo.signOut()
+                                }
+                                if (isLoggedIn) {
+                                    onInnerTubeCookieChange("")
+                                    forgetAccount(context)
+                                }
                             },
                             modifier = Modifier
                                 .padding(horizontal = 16.dp)

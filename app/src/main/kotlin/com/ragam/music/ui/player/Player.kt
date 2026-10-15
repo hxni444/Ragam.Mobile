@@ -13,6 +13,7 @@ import android.content.Context
 import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -51,10 +52,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -73,6 +76,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import kotlinx.coroutines.launch
 import androidx.media3.common.C
 import androidx.media3.common.Player.STATE_BUFFERING
 import androidx.media3.common.Player.STATE_READY
@@ -108,6 +112,14 @@ import com.ragam.music.models.MediaMetadata
 import com.ragam.music.ui.component.BottomSheet
 import com.ragam.music.ui.component.BottomSheetState
 import com.ragam.music.ui.component.LocalBottomSheetPageState
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import coil3.compose.AsyncImage
 import com.ragam.music.ui.component.LocalMenuState
 import com.ragam.music.ui.component.rememberBottomSheetState
 import com.ragam.music.ui.menu.PlayerMenu
@@ -137,6 +149,7 @@ fun BottomSheetPlayer(
     val bottomSheetPageState = LocalBottomSheetPageState.current
 
     val playerConnection = LocalPlayerConnection.current ?: return
+    val coroutineScope = rememberCoroutineScope()
 
     val playerDesignStyle by rememberEnumPreference(
         key = PlayerDesignStyleKey,
@@ -211,6 +224,8 @@ fun BottomSheetPlayer(
     val playbackState by playerConnection.playbackState.collectAsState()
     val isPlaying by playerConnection.isPlaying.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
+    val syncRepo = com.ragam.music.LocalMusicSyncRepository.current
+    val cloudNowPlaying by syncRepo.cloudNowPlaying.collectAsState()
     val currentSong by playerConnection.currentSong.collectAsState(initial = null)
     val currentSongLiked = currentSong?.song?.liked == true
     val queueWindows by playerConnection.queueWindows.collectAsState()
@@ -254,7 +269,7 @@ fun BottomSheetPlayer(
         listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surfaceVariant)
     val fallbackColor = MaterialTheme.colorScheme.surface.toArgb()
 
-    LaunchedEffect(mediaMetadata?.id) {
+    LaunchedEffect(mediaMetadata?.id, cloudNowPlaying?.track?.id) {
         gradientColors = defaultGradientColors
     }
 
@@ -479,6 +494,29 @@ fun BottomSheetPlayer(
             sliderPosition = null
         }
 
+        val isFromDesktop = cloudNowPlaying?.deviceName?.contains("Desktop", ignoreCase = true) == true ||
+            (cloudNowPlaying?.deviceName?.isNotBlank() == true && !cloudNowPlaying?.deviceName.orEmpty().contains("Mobile", ignoreCase = true))
+        val isRemote = (cloudNowPlaying?.track != null) && isFromDesktop && (!isPlaying || cloudNowPlaying?.isPlaying == true)
+        val remoteTrack = cloudNowPlaying?.track
+        val remoteDevice = cloudNowPlaying?.deviceName?.ifBlank { "Desktop" } ?: "Desktop"
+
+        var remoteTickerSec by remember { mutableDoubleStateOf(0.0) }
+        LaunchedEffect(isRemote, cloudNowPlaying?.isPlaying, cloudNowPlaying?.timestampMs, cloudNowPlaying?.positionSec) {
+            if (isRemote && cloudNowPlaying?.isPlaying == true) {
+                val baseTime = cloudNowPlaying?.timestampMs ?: System.currentTimeMillis()
+                val basePos = cloudNowPlaying?.positionSec ?: 0.0
+                val maxDur = (remoteTrack?.duration ?: 1L).toDouble()
+                while (isActive) {
+                    val elapsed = ((System.currentTimeMillis() - baseTime) / 1000.0).coerceAtLeast(0.0)
+                    remoteTickerSec = (basePos + elapsed).coerceAtMost(maxDur)
+                    delay(250)
+                }
+            } else if (isRemote) {
+                remoteTickerSec = cloudNowPlaying?.positionSec ?: 0.0
+            }
+        }
+        val remotePosSec = if (isRemote) remoteTickerSec else 0.0
+
         val enrichedMetadata = remember(mediaMetadata, currentSong) {
             val meta = mediaMetadata ?: return@remember null
             if (meta.album != null) return@remember meta
@@ -497,6 +535,28 @@ fun BottomSheetPlayer(
                 )
 
                 else -> meta
+            }
+        }
+
+        val effectiveMetadata = if (isRemote && remoteTrack != null) {
+            MediaMetadata(
+                id = remoteTrack.id,
+                title = remoteTrack.title,
+                artists = listOf(MediaMetadata.Artist(name = remoteTrack.artist, id = null)),
+                duration = remoteTrack.duration.toInt(),
+                thumbnailUrl = remoteTrack.thumbnailUrl,
+                album = if (remoteTrack.album.isNotBlank()) MediaMetadata.Album(id = "", title = remoteTrack.album) else null
+            )
+        } else {
+            enrichedMetadata ?: remoteTrack?.let {
+                MediaMetadata(
+                    id = it.id,
+                    title = it.title,
+                    artists = listOf(MediaMetadata.Artist(name = it.artist, id = null)),
+                    duration = it.duration.toInt(),
+                    thumbnailUrl = it.thumbnailUrl,
+                    album = if (it.album.isNotBlank()) MediaMetadata.Album(id = "", title = it.album) else null
+                )
             }
         }
 
@@ -533,7 +593,7 @@ fun BottomSheetPlayer(
         if (!state.isCollapsed) {
             PlayerBackground(
                 playerBackground = playerBackground,
-                mediaMetadata = mediaMetadata,
+                mediaMetadata = effectiveMetadata ?: mediaMetadata,
                 gradientColors = gradientColors,
                 disableBlur = disableBlur,
                 playerCustomImageUri = playerCustomImageUri,
@@ -587,11 +647,19 @@ fun BottomSheetPlayer(
                         ) {
                             val screenWidth = LocalConfiguration.current.screenWidthDp
                             val thumbnailSize = (screenWidth * 0.4).dp
-                            Thumbnail(
-                                sliderPositionProvider = { sliderPosition },
-                                modifier = Modifier.size(thumbnailSize),
-                                isPlayerExpanded = state.isExpanded
-                            )
+                            if (isRemote && remoteTrack != null) {
+                                RemoteThumbnailContent(
+                                    track = remoteTrack,
+                                    deviceName = remoteDevice,
+                                    modifier = Modifier.size(thumbnailSize)
+                                )
+                            } else {
+                                Thumbnail(
+                                    sliderPositionProvider = { sliderPosition },
+                                    modifier = Modifier.size(thumbnailSize),
+                                    isPlayerExpanded = state.isExpanded
+                                )
+                            }
                         }
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -606,8 +674,48 @@ fun BottomSheetPlayer(
                         ) {
                             Spacer(Modifier.weight(1f))
 
-                            enrichedMetadata?.let {
-                                controlsContent(it)
+                            if (isRemote && remoteTrack != null) {
+                                RemotePlayerControlsContent(
+                                    track = remoteTrack,
+                                    isPlaying = cloudNowPlaying?.isPlaying == true,
+                                    positionSec = remotePosSec,
+                                    deviceName = remoteDevice,
+                                    textBackgroundColor = TextBackgroundColor,
+                                    textButtonColor = textButtonColor,
+                                    onPlayPause = {
+                                        val isCurrentPlaying = cloudNowPlaying?.isPlaying == true
+                                        coroutineScope.launch {
+                                            syncRepo.updateRemotePlayback(isPlaying = !isCurrentPlaying)
+                                        }
+                                    },
+                                    onSeek = { newSec ->
+                                        coroutineScope.launch {
+                                            syncRepo.updateRemotePlayback(positionSec = newSec)
+                                        }
+                                    },
+                                    onNext = {
+                                        coroutineScope.launch {
+                                            syncRepo.updateRemotePlayback(command = "next")
+                                        }
+                                    },
+                                    onPrevious = {
+                                        coroutineScope.launch {
+                                            syncRepo.updateRemotePlayback(command = "previous")
+                                        }
+                                    },
+                                    onPlayLocally = {
+                                        effectiveMetadata?.let { meta ->
+                                            coroutineScope.launch {
+                                                syncRepo.updateRemotePlayback(isPlaying = false)
+                                                playerConnection.playQueue(com.ragam.music.playback.queues.YouTubeQueue.radio(meta))
+                                            }
+                                        }
+                                    }
+                                )
+                            } else {
+                                enrichedMetadata?.let {
+                                    controlsContent(it)
+                                }
                             }
 
                             Spacer(Modifier.weight(1f))
@@ -708,15 +816,62 @@ fun BottomSheetPlayer(
                                 .weight(1f)
                                 .padding(top = 4.dp, bottom = 12.dp),
                         ) {
-                            Thumbnail(
-                                sliderPositionProvider = { sliderPosition },
-                                modifier = Modifier.nestedScroll(state.preUpPostDownNestedScrollConnection),
-                                isPlayerExpanded = state.isExpanded
-                            )
+                            if (isRemote && remoteTrack != null) {
+                                RemoteThumbnailContent(
+                                    track = remoteTrack,
+                                    deviceName = remoteDevice
+                                )
+                            } else {
+                                Thumbnail(
+                                    sliderPositionProvider = { sliderPosition },
+                                    modifier = Modifier.nestedScroll(state.preUpPostDownNestedScrollConnection),
+                                    isPlayerExpanded = state.isExpanded
+                                )
+                            }
                         }
 
-                        enrichedMetadata?.let {
-                            controlsContent(it)
+                        if (isRemote && remoteTrack != null) {
+                            RemotePlayerControlsContent(
+                                track = remoteTrack,
+                                isPlaying = cloudNowPlaying?.isPlaying == true,
+                                positionSec = remotePosSec,
+                                deviceName = remoteDevice,
+                                textBackgroundColor = TextBackgroundColor,
+                                textButtonColor = textButtonColor,
+                                onPlayPause = {
+                                    val isCurrentPlaying = cloudNowPlaying?.isPlaying == true
+                                    coroutineScope.launch {
+                                        syncRepo.updateRemotePlayback(isPlaying = !isCurrentPlaying)
+                                    }
+                                },
+                                onSeek = { newSec ->
+                                    coroutineScope.launch {
+                                        syncRepo.updateRemotePlayback(positionSec = newSec)
+                                    }
+                                },
+                                onNext = {
+                                    coroutineScope.launch {
+                                        syncRepo.updateRemotePlayback(command = "next")
+                                    }
+                                },
+                                onPrevious = {
+                                    coroutineScope.launch {
+                                        syncRepo.updateRemotePlayback(command = "previous")
+                                    }
+                                },
+                                onPlayLocally = {
+                                    effectiveMetadata?.let { meta ->
+                                        coroutineScope.launch {
+                                            syncRepo.updateRemotePlayback(isPlaying = false)
+                                            playerConnection.playQueue(com.ragam.music.playback.queues.YouTubeQueue.radio(meta))
+                                        }
+                                    }
+                                }
+                            )
+                        } else {
+                            enrichedMetadata?.let {
+                                controlsContent(it)
+                            }
                         }
 
                         Spacer(
@@ -760,7 +915,7 @@ fun BottomSheetPlayer(
             pureBlack = pureBlack,
         )
 
-        mediaMetadata?.let { metadata ->
+        (effectiveMetadata ?: mediaMetadata)?.let { metadata ->
             BottomSheet(
                 state = lyricsSheetState,
                 backgroundColor = Color.Unspecified,
@@ -1077,3 +1232,235 @@ private fun MetroPlayerContent(
 
 
 
+
+@Composable
+fun RemoteThumbnailContent(
+    track: com.ragam.music.sync.TrackDto,
+    deviceName: String,
+    modifier: Modifier = Modifier
+) {
+    val screenWidth = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
+    val baseSize = (screenWidth * 0.74).coerceAtMost(360.0).dp
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+        modifier = modifier.fillMaxWidth()
+    ) {
+        // Device status badge
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = Color.Black.copy(alpha = 0.55f),
+            border = BorderStroke(
+                1.dp,
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+            ),
+            modifier = Modifier.padding(bottom = 16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.desktop_windows),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Playing on $deviceName",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .size(baseSize)
+                .shadow(elevation = 28.dp, shape = RoundedCornerShape(28.dp), spotColor = MaterialTheme.colorScheme.primary)
+                .clip(RoundedCornerShape(28.dp))
+                .border(1.5.dp, Color.White.copy(alpha = 0.22f), RoundedCornerShape(28.dp))
+        ) {
+            AsyncImage(
+                model = track.thumbnailUrl,
+                contentDescription = track.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+    }
+}
+
+@Composable
+fun ColumnScope.RemotePlayerControlsContent(
+    track: com.ragam.music.sync.TrackDto,
+    isPlaying: Boolean,
+    positionSec: Double,
+    deviceName: String,
+    textBackgroundColor: Color,
+    textButtonColor: Color,
+    onPlayPause: () -> Unit,
+    onSeek: (Double) -> Unit,
+    onNext: () -> Unit,
+    onPrevious: () -> Unit,
+    onPlayLocally: () -> Unit
+) {
+    var draggingSec by remember { mutableStateOf<Float?>(null) }
+    val maxDuration = (track.duration.coerceAtLeast(1L)).toFloat()
+    val activeSec = draggingSec ?: positionSec.toFloat()
+    val progress = (activeSec / maxDuration).coerceIn(0f, 1f)
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
+    ) {
+        // Song Title
+        Text(
+            text = track.title.ifBlank { "Unknown Title" },
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = textBackgroundColor,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.basicMarquee()
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        // Artist Name
+        Text(
+            text = track.artist.ifBlank { "Unknown Artist" },
+            style = MaterialTheme.typography.bodyLarge,
+            color = textBackgroundColor.copy(alpha = 0.75f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.basicMarquee()
+        )
+
+        Spacer(modifier = Modifier.height(18.dp))
+
+        // Progress Slider
+        Slider(
+            value = progress,
+            onValueChange = { frac ->
+                draggingSec = frac * maxDuration
+            },
+            onValueChangeFinished = {
+                draggingSec?.let { seekSec ->
+                    onSeek(seekSec.toDouble())
+                }
+                draggingSec = null
+            },
+            colors = SliderDefaults.colors(
+                thumbColor = MaterialTheme.colorScheme.primary,
+                activeTrackColor = MaterialTheme.colorScheme.primary,
+                inactiveTrackColor = Color.White.copy(alpha = 0.2f)
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            val curMs = ((draggingSec ?: positionSec.toFloat()) * 1000f).toLong().coerceAtLeast(0L)
+            val durMs = track.duration * 1000L
+            Text(
+                text = com.ragam.music.utils.makeTimeString(curMs),
+                style = MaterialTheme.typography.labelSmall,
+                color = textBackgroundColor.copy(alpha = 0.7f)
+            )
+            Text(
+                text = com.ragam.music.utils.makeTimeString(durMs),
+                style = MaterialTheme.typography.labelSmall,
+                color = textBackgroundColor.copy(alpha = 0.7f)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // Main Controls Row: Prev, Big Play/Pause, Next
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(28.dp)
+        ) {
+            IconButton(
+                onClick = onPrevious,
+                modifier = Modifier.size(52.dp)
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.skip_previous),
+                    contentDescription = "Restart Track",
+                    tint = textButtonColor,
+                    modifier = Modifier.size(34.dp)
+                )
+            }
+
+            Surface(
+                onClick = onPlayPause,
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primary,
+                shadowElevation = 12.dp,
+                modifier = Modifier.size(68.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                    Icon(
+                        painter = painterResource(if (isPlaying) R.drawable.pause else R.drawable.play),
+                        contentDescription = if (isPlaying) "Pause" else "Play",
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(36.dp)
+                    )
+                }
+            }
+
+            IconButton(
+                onClick = onNext,
+                modifier = Modifier.size(52.dp)
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.skip_next),
+                    contentDescription = "Next Track",
+                    tint = textButtonColor,
+                    modifier = Modifier.size(34.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(22.dp))
+
+        // "Play on this phone" Action Button
+        Surface(
+            onClick = onPlayLocally,
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.primaryContainer,
+            border = BorderStroke(
+                1.dp,
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+            ),
+            shadowElevation = 6.dp
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.padding(horizontal = 22.dp, vertical = 11.dp)
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.android_cell),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = "Play on this phone",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+        }
+    }
+}

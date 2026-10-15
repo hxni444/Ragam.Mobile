@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Velune Project Original (2026)
  * Kòi Natsuko (github.com/koiverse)
  * Licensed Under GPL-3.0 | see git history for contributors
@@ -606,17 +606,21 @@ object YouTube {
             return@runCatching homeContinuation(continuation).getOrThrow()
         }
 
-        val response = innerTube.browse(WEB_REMIX, browseId = "FEmusic_home", params = params, setLogin = true).body<BrowseResponse>()
+        val response = try {
+            innerTube.browse(WEB_REMIX, browseId = "FEmusic_home", params = params, setLogin = true).body<BrowseResponse>()
+        } catch (e: Exception) {
+            innerTube.browse(WEB_REMIX, browseId = "FEmusic_home", params = params, setLogin = false).body<BrowseResponse>()
+        }
         val continuation = response.contents?.singleColumnBrowseResultsRenderer?.tabs?.firstOrNull()
             ?.tabRenderer?.content?.sectionListRenderer?.continuations?.getContinuation()
         val sectionListRender = response.contents?.singleColumnBrowseResultsRenderer?.tabs?.firstOrNull()
             ?.tabRenderer?.content?.sectionListRenderer
-        val sections = sectionListRender?.contents!!
-            .mapNotNull { it.musicCarouselShelfRenderer }
-            .mapNotNull {
+        val sections = sectionListRender?.contents
+            ?.mapNotNull { it.musicCarouselShelfRenderer }
+            ?.mapNotNull {
                 HomePage.Section.fromMusicCarouselShelfRenderer(it)
-            }.toMutableList()
-        val chips = sectionListRender.header?.chipCloudRenderer?.chips?.mapNotNull { HomePage.Chip.fromChipCloudChipRenderer(it) }
+            }?.toMutableList() ?: mutableListOf()
+        val chips = sectionListRender?.header?.chipCloudRenderer?.chips?.mapNotNull { HomePage.Chip.fromChipCloudChipRenderer(it) }
         HomePage(chips, sections, continuation)
     }
 
@@ -1222,12 +1226,16 @@ object YouTube {
     }
 
     suspend fun visitorData(): Result<String> = runCatching {
-        Json.parseToJsonElement(innerTube.getSwJsData().bodyAsText().substring(5))
+        val raw = innerTube.getSwJsData().bodyAsText()
+        VISITOR_DATA_REGEX.find(raw)?.groupValues?.getOrNull(1)?.let { return@runCatching it }
+
+        val jsonStr = if (raw.startsWith(")]}'")) raw.substring(raw.indexOf('\n') + 1).trim() else raw
+        Json.parseToJsonElement(jsonStr)
             .jsonArray[0]
             .jsonArray[2]
             .jsonArray.first {
                 (it as? JsonPrimitive)?.contentOrNull?.let { candidate ->
-                    VISITOR_DATA_REGEX.containsMatchIn(candidate)
+                    candidate.startsWith("Cgt") || candidate.startsWith("Cgs")
                 } ?: false
             }
             .jsonPrimitive.content
@@ -1270,7 +1278,7 @@ object YouTube {
 
     const val MAX_GET_QUEUE_SIZE = 1000
 
-    private val VISITOR_DATA_REGEX = Regex("^Cg[t|s]")
+    private val VISITOR_DATA_REGEX = Regex("""(Cg[ts][a-zA-Z0-9_\-%]{10,})""")
 }
 
 fun String.toHighResThumbnail(): String {

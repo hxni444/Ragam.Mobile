@@ -200,6 +200,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -274,7 +275,7 @@ class MusicService :
     private val preferredStreamClient by enumPreference(
         this,
         PlayerStreamClientKey,
-        PlayerStreamClient.IOS
+        PlayerStreamClient.ANDROID_VR
     )
     private val playbackUrlCache = ConcurrentHashMap<String, Pair<String, Long>>()
     private val streamRecoveryState = ConcurrentHashMap<String, Pair<Int, Long>>()
@@ -387,6 +388,8 @@ class MusicService :
     private var lastDiscordUpdateTime = 0L
 
     private var scrobbleManager: com.ragam.music.utils.ScrobbleManager? = null
+    private var yieldingToDesktop = false
+    private var lastDesktopCommandTimestamp = 0L
 
     val automixItems = MutableStateFlow<List<MediaItem>>(emptyList())
     val automixLoading = MutableStateFlow(false)
@@ -642,6 +645,37 @@ class MusicService :
                 ensurePresenceManager()
             } else {
                 discordRpc?.closeRPC()
+            }
+        }
+
+        scope.launch {
+            musicSyncRepository.cloudNowPlaying.collect { state ->
+                if (state != null) {
+                    if (state.remoteCommandFrom?.contains("Desktop", ignoreCase = true) == true) {
+                        val cmdTime = state.commandTimestampMs
+                        if (cmdTime > lastDesktopCommandTimestamp) {
+                            lastDesktopCommandTimestamp = cmdTime
+                            when (state.remoteCommand) {
+                                "next" -> withContext(Dispatchers.Main) { player.seekToNext() }
+                                "previous" -> withContext(Dispatchers.Main) { player.seekToPrevious() }
+                                "play" -> withContext(Dispatchers.Main) { player.play() }
+                                "pause" -> withContext(Dispatchers.Main) { player.pause() }
+                            }
+                            if (state.remoteCommand != null) {
+                                musicSyncRepository.updateRemotePlayback(command = null)
+                            }
+                        }
+                    }
+                    if (state.isPlaying && state.deviceName.contains("Desktop", ignoreCase = true)) {
+                        if (player.isPlaying) {
+                            timber.log.Timber.tag("MusicService").d("Desktop started playback; pausing local player")
+                            yieldingToDesktop = true
+                            withContext(Dispatchers.Main) {
+                                player.pause()
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -1034,7 +1068,7 @@ class MusicService :
     private var lastSyncedHistoryMediaId: String? = null
 
     private fun syncPlaybackToCloud(isPlaying: Boolean? = null) {
-        val metadata = player.currentMetadata ?: return
+        val metadata = player.currentMetadata ?: currentMediaMetadata.value ?: return
         val trackDto = com.ragam.music.sync.TrackDto(
             id = metadata.id,
             title = metadata.title,
@@ -3770,7 +3804,9 @@ class MusicService :
 
        if (events.containsAny(EVENT_TIMELINE_CHANGED, EVENT_POSITION_DISCONTINUITY)) {
             currentMediaMetadata.value = player.currentMetadata
-            syncPlaybackToCloud()
+            if (!yieldingToDesktop) {
+                syncPlaybackToCloud()
+            }
             scope.launch {
                 try {
                     val token = dataStore.get(DiscordTokenKey, "")
@@ -3830,7 +3866,12 @@ class MusicService :
                 thumbnailUrl = currentMetadata?.thumbnailUrl
             )
 
-            syncPlaybackToCloud(isPlaying)
+            if (yieldingToDesktop) {
+                timber.log.Timber.tag("MusicService").d("Suppressing local playback cloud sync because playback yielded to Desktop")
+                yieldingToDesktop = false
+            } else {
+                syncPlaybackToCloud(isPlaying)
+            }
 
 
 
@@ -3966,8 +4007,11 @@ class MusicService :
         if (currentMediaId != null && YTPlayerUtils.isBotDetectionException(error)) {
             if (markAndCheckRecoveryAllowance(currentMediaId)) {
                 Timber.tag("MusicService").w(
-                    "Bot detection error for $currentMediaId — clearing caches and retrying with fresh stream"
+                    "Bot detection error for $currentMediaId — refreshing visitor data, clearing caches and retrying with fresh stream"
                 )
+                scope.launch(Dispatchers.IO) {
+                    YTPlayerUtils.refreshVisitorData()
+                }
                 YTPlayerUtils.invalidateCachedStreamUrls(currentMediaId)
                 playbackUrlCache.remove(currentMediaId)
                 pendingStreamRefreshValidationMediaId = currentMediaId
@@ -3982,6 +4026,7 @@ class MusicService :
                 error.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS ||
                     error.errorCode == PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND ||
                     error.errorCode == PlaybackException.ERROR_CODE_IO_READ_POSITION_OUT_OF_RANGE ||
+                    error.errorCode == PlaybackException.ERROR_CODE_REMOTE_ERROR ||
                     httpStatusCode in setOf(403, 404, 410, 416, 429, 500, 502, 503)
                 )
 
@@ -4160,6 +4205,12 @@ class MusicService :
                 return@Factory dataSpec.withUri(it.first.toUri()).subrange(dataSpec.uriPositionOffset, length)
             }
 
+            val song = runBlocking(Dispatchers.IO) {
+                runCatching { database.song(mediaId).first() }.getOrNull()
+            } ?: currentSong.value?.takeIf { it.song.id == mediaId }
+            val trackTitle = song?.song?.title
+            val trackArtist = song?.artists?.joinToString(", ") { it.name }
+
             val playbackData = runBlocking(Dispatchers.IO) {
                 YTPlayerUtils.playerResponseForPlayback(
                     mediaId,
@@ -4167,6 +4218,8 @@ class MusicService :
                     connectivityManager = connectivityManager,
                     preferredStreamClient = preferredStreamClient,
                     avoidCodecs = avoidStreamCodecs,
+                    title = trackTitle,
+                    artist = trackArtist,
                 )
             }.getOrElse { throwable ->
                 when (throwable) {
@@ -4511,8 +4564,8 @@ class MusicService :
                     ObjectOutputStream(fos).use { output ->
                         output.writeObject(payload)
                         output.flush()
+                        runCatching { fos.fd.sync() }
                     }
-                    fos.fd.sync()
                 }
 
                 if (persistentFile.exists() && !persistentFile.delete()) {

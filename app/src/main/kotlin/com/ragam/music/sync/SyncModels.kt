@@ -27,7 +27,10 @@ data class CloudNowPlayingState(
     val repeatMode: String = "off",
     @get:PropertyName("isShuffle")
     @set:PropertyName("isShuffle")
-    var isShuffle: Boolean = false
+    var isShuffle: Boolean = false,
+    val remoteCommand: String? = null,
+    val remoteCommandFrom: String? = null,
+    val commandTimestampMs: Long = 0L
 )
 
 @IgnoreExtraProperties

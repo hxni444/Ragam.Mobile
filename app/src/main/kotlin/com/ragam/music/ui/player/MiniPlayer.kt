@@ -46,8 +46,10 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -87,6 +89,8 @@ import com.ragam.music.extensions.togglePlayPause
 import com.ragam.music.models.MediaMetadata
 import com.ragam.music.utils.rememberPreference
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 import androidx.compose.foundation.clickable
@@ -498,7 +502,9 @@ private fun FloatingMiniPlayerContent(
     val cloudNowPlaying by syncRepo.cloudNowPlaying.collectAsState()
     val coroutineScope = rememberCoroutineScope()
 
-    val isRemote = mediaMetadata == null && cloudNowPlaying?.track != null
+    val isFromDesktop = cloudNowPlaying?.deviceName?.contains("Desktop", ignoreCase = true) == true ||
+        (cloudNowPlaying?.deviceName?.isNotBlank() == true && !cloudNowPlaying?.deviceName.orEmpty().contains("Mobile", ignoreCase = true))
+    val isRemote = (cloudNowPlaying?.track != null) && isFromDesktop && (!isPlaying || cloudNowPlaying?.isPlaying == true)
     val cloudTrack = cloudNowPlaying?.track
 
     val title = if (isRemote) cloudTrack?.title.orEmpty() else (mediaMetadata?.title ?: "Unknown Song")
@@ -506,10 +512,22 @@ private fun FloatingMiniPlayerContent(
     val thumbnailUrl = if (isRemote) cloudTrack?.thumbnailUrl else mediaMetadata?.thumbnailUrl
     val remoteDevice = cloudNowPlaying?.deviceName?.ifBlank { "Desktop" } ?: "Desktop"
 
-    val elapsedSec = if (isRemote && cloudNowPlaying?.isPlaying == true && (cloudNowPlaying?.timestampMs ?: 0L) > 0L) {
-        ((System.currentTimeMillis() - cloudNowPlaying!!.timestampMs) / 1000.0).coerceAtLeast(0.0)
-    } else 0.0
-    val cloudPosSec = if (isRemote) ((cloudNowPlaying?.positionSec ?: 0.0) + elapsedSec) else 0.0
+    var remoteTickerSec by remember { mutableDoubleStateOf(0.0) }
+    LaunchedEffect(isRemote, cloudNowPlaying?.isPlaying, cloudNowPlaying?.timestampMs, cloudNowPlaying?.positionSec) {
+        if (isRemote && cloudNowPlaying?.isPlaying == true) {
+            val baseTime = cloudNowPlaying?.timestampMs ?: System.currentTimeMillis()
+            val basePos = cloudNowPlaying?.positionSec ?: 0.0
+            val maxDur = (cloudTrack?.duration ?: 1L).toDouble()
+            while (isActive) {
+                val elapsed = ((System.currentTimeMillis() - baseTime) / 1000.0).coerceAtLeast(0.0)
+                remoteTickerSec = (basePos + elapsed).coerceAtMost(maxDur)
+                delay(250)
+            }
+        } else if (isRemote) {
+            remoteTickerSec = cloudNowPlaying?.positionSec ?: 0.0
+        }
+    }
+    val cloudPosSec = if (isRemote) remoteTickerSec else 0.0
     val cloudDurSec = if (isRemote) ((cloudTrack?.duration ?: 1L).coerceAtLeast(1L)).toDouble() else 1.0
     val effectiveProgress = if (isRemote) {
         (cloudPosSec / cloudDurSec).toFloat().coerceIn(0f, 1f)
@@ -616,7 +634,7 @@ private fun FloatingMiniPlayerContent(
                 if (isRemote) {
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "• 💻 $remoteDevice",
+                        text = "• $remoteDevice",
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary,
@@ -626,46 +644,18 @@ private fun FloatingMiniPlayerContent(
             }
         }
         if (isRemote) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(end = 4.dp)
+            Box(
+                modifier = Modifier
+                    .padding(end = 12.dp)
+                    .size(36.dp),
+                contentAlignment = Alignment.Center
             ) {
-                val buttonModifier = Modifier
-                    .size(36.dp)
-                    .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f), CircleShape)
-                    .clip(CircleShape)
-
-                Box(
-                    modifier = buttonModifier.clickable {
-                        coroutineScope.launch {
-                            syncRepo.updateRemotePlayback(isPlaying = !effectiveIsPlaying)
-                        }
-                    },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(if (effectiveIsPlaying) R.drawable.pause else R.drawable.play),
-                        contentDescription = if (effectiveIsPlaying) "Pause Remote" else "Play Remote",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-                Box(
-                    modifier = buttonModifier.clickable {
-                        coroutineScope.launch {
-                            syncRepo.clearNowPlaying()
-                        }
-                    },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.desktop_windows),
-                        contentDescription = "Desktop Stream",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
+                Icon(
+                    painter = painterResource(R.drawable.desktop_windows),
+                    contentDescription = "Playing on Desktop",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(22.dp)
+                )
             }
         } else {
             Row(

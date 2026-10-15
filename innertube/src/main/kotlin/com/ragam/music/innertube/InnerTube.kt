@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Velune Project Original (2026)
  * Kòi Natsuko (github.com/koiverse)
  * Licensed Under GPL-3.0 | see git history for contributors
@@ -188,33 +188,68 @@ class InnerTube {
         signatureTimestamp: Int?,
         poToken: String? = null,
     ) = withRetry {
-        httpClient.post("player") {
-        ytClient(client, setLogin = true)
-        setBody(
-            PlayerBody(
-                context = client.toContext(locale, visitorData, dataSyncId).let {
-                    if (client.isEmbedded) {
-                        it.copy(
-                            thirdParty = Context.ThirdParty(
-                                embedUrl = "https://www.youtube.com/watch?v=${videoId}"
+        try {
+            httpClient.post("player") {
+                ytClient(client, setLogin = true)
+                setBody(
+                    PlayerBody(
+                        context = client.toContext(locale, visitorData, dataSyncId).let {
+                            if (client.isEmbedded) {
+                                it.copy(
+                                    thirdParty = Context.ThirdParty(
+                                        embedUrl = "https://www.youtube.com/watch?v=${videoId}"
+                                    )
+                                )
+                            } else it
+                        },
+                        videoId = videoId,
+                        playlistId = playlistId,
+                        playbackContext = if (client.useSignatureTimestamp && signatureTimestamp != null) {
+                            PlayerBody.PlaybackContext(
+                                PlayerBody.PlaybackContext.ContentPlaybackContext(
+                                    signatureTimestamp
+                                )
                             )
-                        )
-                    } else it
-                },
-                videoId = videoId,
-                playlistId = playlistId,
-                playbackContext = if (client.useSignatureTimestamp && signatureTimestamp != null) {
-                    PlayerBody.PlaybackContext(
-                        PlayerBody.PlaybackContext.ContentPlaybackContext(
-                            signatureTimestamp
+                        } else null,
+                        serviceIntegrityDimensions = poToken?.let {
+                            PlayerBody.ServiceIntegrityDimensions(poToken = it)
+                        },
+                    )
+                )
+            }
+        } catch (e: ClientRequestException) {
+            if (e.response.status == HttpStatusCode.Unauthorized && authState.hasLoginCookie) {
+                httpClient.post("player") {
+                    ytClient(client, setLogin = false)
+                    setBody(
+                        PlayerBody(
+                            context = client.toContext(locale, visitorData, null).let {
+                                if (client.isEmbedded) {
+                                    it.copy(
+                                        thirdParty = Context.ThirdParty(
+                                            embedUrl = "https://www.youtube.com/watch?v=${videoId}"
+                                        )
+                                    )
+                                } else it
+                            },
+                            videoId = videoId,
+                            playlistId = playlistId,
+                            playbackContext = if (client.useSignatureTimestamp && signatureTimestamp != null) {
+                                PlayerBody.PlaybackContext(
+                                    PlayerBody.PlaybackContext.ContentPlaybackContext(
+                                        signatureTimestamp
+                                    )
+                                )
+                            } else null,
+                            serviceIntegrityDimensions = poToken?.let {
+                                PlayerBody.ServiceIntegrityDimensions(poToken = it)
+                            },
                         )
                     )
-                } else null,
-                serviceIntegrityDimensions = poToken?.let {
-                    PlayerBody.ServiceIntegrityDimensions(poToken = it)
-                },
-            )
-        )
+                }
+            } else {
+                throw e
+            }
         }
     }
 
@@ -249,20 +284,42 @@ class InnerTube {
         continuation: String? = null,
         setLogin: Boolean = false,
     ) = withRetry {
-        httpClient.post("browse") {
-            ytClient(client, setLogin = setLogin || useLoginForBrowse)
-            setBody(
-                BrowseBody(
-                    context = client.toContext(
-                        locale,
-                        visitorData,
-                        if (setLogin || useLoginForBrowse) dataSyncId else null
-                    ),
-                    browseId = browseId,
-                    params = params,
-                    continuation = continuation
+        try {
+            httpClient.post("browse") {
+                ytClient(client, setLogin = setLogin || useLoginForBrowse)
+                setBody(
+                    BrowseBody(
+                        context = client.toContext(
+                            locale,
+                            visitorData,
+                            if (setLogin || useLoginForBrowse) dataSyncId else null
+                        ),
+                        browseId = browseId,
+                        params = params,
+                        continuation = continuation
+                    )
                 )
-            )
+            }
+        } catch (e: ClientRequestException) {
+            if (e.response.status == HttpStatusCode.Unauthorized && (setLogin || useLoginForBrowse) && authState.hasLoginCookie) {
+                httpClient.post("browse") {
+                    ytClient(client, setLogin = false)
+                    setBody(
+                        BrowseBody(
+                            context = client.toContext(
+                                locale,
+                                visitorData,
+                                null
+                            ),
+                            browseId = browseId,
+                            params = params,
+                            continuation = continuation
+                        )
+                    )
+                }
+            } else {
+                throw e
+            }
         }
     }
 
@@ -275,19 +332,40 @@ class InnerTube {
         params: String?,
         continuation: String? = null,
     ) = withRetry {
-        httpClient.post("next") {
-            ytClient(client, setLogin = true)
-            setBody(
-                NextBody(
-                    context = client.toContext(locale, visitorData, dataSyncId),
-                    videoId = videoId,
-                    playlistId = playlistId,
-                    playlistSetVideoId = playlistSetVideoId,
-                    index = index,
-                    params = params,
-                    continuation = continuation
+        try {
+            httpClient.post("next") {
+                ytClient(client, setLogin = true)
+                setBody(
+                    NextBody(
+                        context = client.toContext(locale, visitorData, dataSyncId),
+                        videoId = videoId,
+                        playlistId = playlistId,
+                        playlistSetVideoId = playlistSetVideoId,
+                        index = index,
+                        params = params,
+                        continuation = continuation
+                    )
                 )
-            )
+            }
+        } catch (e: ClientRequestException) {
+            if (e.response.status == HttpStatusCode.Unauthorized && authState.hasLoginCookie) {
+                httpClient.post("next") {
+                    ytClient(client, setLogin = false)
+                    setBody(
+                        NextBody(
+                            context = client.toContext(locale, visitorData, null),
+                            videoId = videoId,
+                            playlistId = playlistId,
+                            playlistSetVideoId = playlistSetVideoId,
+                            index = index,
+                            params = params,
+                            continuation = continuation
+                        )
+                    )
+                }
+            } else {
+                throw e
+            }
         }
     }
 

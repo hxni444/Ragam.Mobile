@@ -30,6 +30,7 @@ import com.ragam.music.innertube.models.YouTubeClient.Companion.IPADOS
 import com.ragam.music.innertube.models.YouTubeClient.Companion.IOS_MUSIC
 import com.ragam.music.innertube.models.YouTubeClient.Companion.MOBILE
 import com.ragam.music.innertube.models.YouTubeClient.Companion.TVHTML5
+import com.ragam.music.innertube.models.YouTubeClient.Companion.MWEB
 import com.ragam.music.innertube.models.YouTubeClient.Companion.VISIONOS
 import com.ragam.music.innertube.models.YouTubeClient.Companion.WEB
 import com.ragam.music.innertube.models.YouTubeClient.Companion.WEB_CREATOR
@@ -41,7 +42,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 object YTPlayerUtils {
     private const val logTag = "YTPlayerUtils"
-    private const val FAILED_CLIENT_BACKOFF_MS = 10 * 60 * 1000L
+    private const val FAILED_CLIENT_BACKOFF_MS = 30 * 1000L
 
     @Volatile private var streamClientPair: Pair<java.net.Proxy?, OkHttpClient>? = null
 
@@ -70,6 +71,8 @@ object YTPlayerUtils {
      * Clients used for fallback streams in case the streams of the main client do not work.
      */
     private val STREAM_FALLBACK_CLIENTS: Array<YouTubeClient> = arrayOf(
+        VISIONOS,
+        MWEB,
         MOBILE,
         ANDROID_MUSIC,
         ANDROID_VR_NO_AUTH,
@@ -82,7 +85,6 @@ object YTPlayerUtils {
         ANDROID_TESTSUITE,
         ANDROID_UNPLUGGED,
         IPADOS,
-        VISIONOS,
         TVHTML5,
         WEB,
         WEB_CREATOR,
@@ -99,13 +101,15 @@ object YTPlayerUtils {
     fun invalidateCachedStreamUrls(videoId: String) {
         val prefix = "$videoId:"
         streamUrlCache.keys.removeIf { it.startsWith(prefix) }
+        failedStreamClientsUntil.keys.removeIf { it.startsWith(prefix) }
     }
 
     fun markStreamClientFailed(videoId: String, clientKey: String?, httpStatusCode: Int?) {
         if (httpStatusCode != 403 && httpStatusCode != 429) return
         val normalizedClientKey = normalizeStreamClientKey(clientKey)
         if (normalizedClientKey.isEmpty()) return
-        failedStreamClientsUntil[normalizedClientKey] =
+        val key = buildFailedClientKey(videoId, normalizedClientKey)
+        failedStreamClientsUntil[key] =
             System.currentTimeMillis() + FAILED_CLIENT_BACKOFF_MS
     }
 
@@ -113,14 +117,35 @@ object YTPlayerUtils {
         val normalizedClientKey = normalizeStreamClientKey(clientKey)
         if (normalizedClientKey.isEmpty()) return false
 
-        val until = failedStreamClientsUntil[normalizedClientKey] ?: return false
+        val key = buildFailedClientKey(videoId, normalizedClientKey)
+        val until = failedStreamClientsUntil[key] ?: return false
         if (until <= System.currentTimeMillis()) {
-            failedStreamClientsUntil.remove(normalizedClientKey)
+            failedStreamClientsUntil.remove(key)
             return false
         }
         return true
     }
 
+    suspend fun ensureVisitorData(): String? {
+        var current = YouTube.visitorData
+        if (current.isNullOrBlank() || current == "null") {
+            Timber.tag(logTag).i("Visitor data is missing; fetching fresh visitor data...")
+            current = YouTube.visitorData().getOrNull()
+            if (!current.isNullOrBlank()) {
+                YouTube.visitorData = current
+            }
+        }
+        return current
+    }
+
+    suspend fun refreshVisitorData(): String? {
+        Timber.tag(logTag).i("Refreshing visitor data due to bot challenge...")
+        val fresh = YouTube.visitorData().getOrNull()
+        if (!fresh.isNullOrBlank()) {
+            YouTube.visitorData = fresh
+        }
+        return fresh
+    }
 
     fun markPreferredClientFailed(videoId: String, client: PlayerStreamClient, httpStatusCode: Int?) {
         markStreamClientFailed(videoId, client.name, httpStatusCode)
@@ -155,6 +180,8 @@ object YTPlayerUtils {
         // if provided, this preference overrides ConnectivityManager.isActiveNetworkMetered
         networkMetered: Boolean? = null,
         avoidCodecs: Set<String> = emptySet(),
+        title: String? = null,
+        artist: String? = null,
     ): Result<PlaybackData> = runCatching {
         val attempts =
             when (audioQuality) {
@@ -180,6 +207,35 @@ object YTPlayerUtils {
             if (attemptResult.isSuccess) return@runCatching attemptResult.getOrThrow()
             lastError = attemptResult.exceptionOrNull()
         }
+
+        // Fallback: If direct stream resolution failed and we have title/artist, search for alternative
+        if (lastError != null && (!title.isNullOrBlank() || !artist.isNullOrBlank())) {
+            val query = listOfNotNull(title, artist).joinToString(" ").trim()
+            Timber.tag(logTag).w("All stream clients failed for $videoId. Trying search fallback for: $query")
+            val fallbackVideoId = runCatching {
+                val searchResult = YouTube.search(query, com.ragam.music.innertube.YouTube.SearchFilter.FILTER_SONG).getOrNull()
+                searchResult?.items?.firstOrNull { it.id != videoId }?.id
+            }.getOrNull()
+
+            if (fallbackVideoId != null) {
+                Timber.tag(logTag).i("Found fallback videoId: $fallbackVideoId for '$query', resolving stream...")
+                for (attempt in attempts) {
+                    val fallbackResult = runCatching {
+                        playerResponseForPlaybackOnce(
+                            videoId = fallbackVideoId,
+                            playlistId = playlistId,
+                            audioQuality = attempt,
+                            connectivityManager = connectivityManager,
+                            preferredStreamClient = preferredStreamClient,
+                            networkMetered = networkMetered,
+                            avoidCodecs = avoidCodecs,
+                        )
+                    }
+                    if (fallbackResult.isSuccess) return@runCatching fallbackResult.getOrThrow()
+                }
+            }
+        }
+
         throw lastError ?: IllegalStateException("Failed to resolve stream")
     }
 
@@ -196,9 +252,12 @@ object YTPlayerUtils {
         val signatureTimestamp = getSignatureTimestampOrNull(videoId)
         Timber.tag(logTag).v("Signature timestamp: $signatureTimestamp")
 
+        if (YouTube.cookie == null) {
+            ensureVisitorData()
+        }
         val isLoggedIn = YouTube.cookie != null
         val sessionId = if (isLoggedIn) YouTube.dataSyncId else YouTube.visitorData
-        Timber.tag(logTag).v("Session authentication status: ${if (isLoggedIn) "Logged in" else "Not logged in"} (sessionId=${sessionId.orEmpty()})")
+        Timber.tag(logTag).i("Session authentication status: ${if (isLoggedIn) "Logged in" else "Not logged in"} (sessionId=${sessionId.orEmpty()})")
 
         var format: PlayerResponse.StreamingData.Format? = null
         var streamUrl: String? = null
@@ -216,16 +275,20 @@ object YTPlayerUtils {
 
         val preferredYouTubeClient =
             when (preferredStreamClient) {
-                PlayerStreamClient.ANDROID_VR -> IOS // Aliased to IOS to bypass bot detection currently blocking VR clients
+                PlayerStreamClient.ANDROID_VR -> VISIONOS // VisionOS has full working direct streams
                 PlayerStreamClient.WEB_REMIX -> WEB_REMIX
                 PlayerStreamClient.IOS -> IOS
-                PlayerStreamClient.MOBILE -> ANDROID_MUSIC
+                PlayerStreamClient.MOBILE -> MWEB
                 PlayerStreamClient.TVHTML5 -> TVHTML5_SIMPLY_EMBEDDED_PLAYER
                 PlayerStreamClient.ANDROID_MUSIC -> ANDROID_MUSIC
             }
 
         val metadataClient =
-            preferredYouTubeClient.takeIf { preferredStreamClient == PlayerStreamClient.ANDROID_VR } ?: MAIN_CLIENT
+            if (preferredStreamClient == PlayerStreamClient.ANDROID_VR || !isLoggedIn) {
+                VISIONOS
+            } else {
+                preferredYouTubeClient.takeIf { preferredStreamClient != PlayerStreamClient.WEB_REMIX } ?: MAIN_CLIENT
+            }
 
         Timber.tag(logTag).i("Fetching metadata response using client: ${metadataClient.clientName}")
         val metadataPlayerResponse = runCatching {
@@ -237,6 +300,9 @@ object YTPlayerUtils {
 
         val streamClients =
             buildList {
+                if (!isLoggedIn) {
+                    add(VISIONOS)
+                }
                 add(preferredYouTubeClient)
                 addAll(orderedFallbackClients)
                 if (preferredYouTubeClient != MAIN_CLIENT) add(MAIN_CLIENT)
@@ -277,17 +343,30 @@ object YTPlayerUtils {
 
             if (streamPlayerResponse.playabilityStatus.status != "OK") {
                 val reason = streamPlayerResponse.playabilityStatus.reason.orEmpty()
-                val isBotDetection = isBotDetectionError(reason)
+                val isBotDetection = isBotDetectionError(reason) || streamPlayerResponse.playabilityStatus.status == "LOGIN_REQUIRED"
                 Timber.tag(logTag).w(
                     "Player response status not OK: ${streamPlayerResponse.playabilityStatus.status}, reason: $reason, botDetection: $isBotDetection"
                 )
-                if (isBotDetection) {
-                    botDetectedClients.add(client.clientName)
-
-                    failedStreamClientsUntil[normalizeStreamClientKey(client.clientName)] =
-                        System.currentTimeMillis() + FAILED_CLIENT_BACKOFF_MS
+                if (isBotDetection && !isLoggedIn) {
+                    val refreshed = refreshVisitorData()
+                    if (!refreshed.isNullOrBlank()) {
+                        val retryResponse = YouTube.player(videoId, playlistId, client, signatureTimestamp).getOrNull()
+                        if (retryResponse != null && retryResponse.playabilityStatus.status == "OK") {
+                            Timber.tag(logTag).i("Successfully recovered client ${client.clientName} after refreshing visitor data!")
+                            streamPlayerResponse = retryResponse
+                        }
+                    }
                 }
-                continue
+
+                if (streamPlayerResponse == null || streamPlayerResponse.playabilityStatus.status != "OK") {
+                    if (isBotDetection) {
+                        botDetectedClients.add(client.clientName)
+                        failedStreamClientsUntil[buildFailedClientKey(videoId, client.clientName)] =
+                            System.currentTimeMillis() + FAILED_CLIENT_BACKOFF_MS
+                    }
+                    streamPlayerResponse = null
+                    continue
+                }
             }
 
             val isMetered = networkMetered ?: connectivityManager.isActiveNetworkMetered

@@ -143,9 +143,16 @@ fun AccountSettings(
     var showAuthModal by remember { mutableStateOf(false) }
 
     val syncRepo = com.ragam.music.LocalMusicSyncRepository.current
-    val firebaseUser = remember(showAuthModal) { syncRepo.getCurrentFirebaseUser() }
+    val firebaseUser by syncRepo.currentUser.collectAsState()
+    val isFirebaseLoggedIn = firebaseUser != null
+    val isUserLoggedIn = isLoggedIn || isFirebaseLoggedIn
+    val effectiveAvatarUrl = firebaseUser?.photoUrl?.toString() ?: if (isLoggedIn) accountImageUrl else null
+    val effectiveAccountName = firebaseUser?.displayName?.takeIf { it.isNotBlank() }
+        ?: accountName?.takeIf { it.isNotBlank() && it != "Guest" }
+        ?: firebaseUser?.email ?: ""
+    val effectiveAccountEmail = firebaseUser?.email ?: accountEmail
     var effectiveSyncId by remember { mutableStateOf("") }
-    LaunchedEffect(showAuthModal) {
+    LaunchedEffect(showAuthModal, firebaseUser) {
         effectiveSyncId = syncRepo.getActiveSyncId()
     }
 
@@ -165,21 +172,26 @@ fun AccountSettings(
         ) {
             // Account Card
             AccountCard(
-                isLoggedIn = isLoggedIn,
-                accountName = accountName ?:"",
-                accountEmail = accountEmail,
-                accountImageUrl = accountImageUrl,
+                isLoggedIn = isUserLoggedIn,
+                accountName = effectiveAccountName,
+                accountEmail = effectiveAccountEmail,
+                accountImageUrl = effectiveAvatarUrl,
                 onAccountClick = {
                     onClose()
                     if (isLoggedIn) {
                         navController.navigate("account")
                     } else {
-                        navController.navigate("login")
+                        showAuthModal = true
                     }
                 },
                 onLogout = {
-                    onInnerTubeCookieChange("")
-                    forgetAccount(context)
+                    if (isFirebaseLoggedIn) {
+                        syncRepo.signOut()
+                    }
+                    if (isLoggedIn) {
+                        onInnerTubeCookieChange("")
+                        forgetAccount(context)
+                    }
                 }
             )
 
@@ -188,9 +200,9 @@ fun AccountSettings(
                 val isFirebaseLoggedIn = firebaseUser != null
                 SettingsClickableItem(
                     icon = painterResource(R.drawable.desktop_windows),
-                    title = if (isFirebaseLoggedIn) "Firebase: ${firebaseUser.displayName.orEmpty().ifBlank { firebaseUser.email ?: "Account" }}" else "Connect / Pair with Desktop",
+                    title = if (isFirebaseLoggedIn) "Firebase: ${firebaseUser?.displayName.orEmpty().ifBlank { firebaseUser?.email ?: "Account" }}" else "Connect / Pair with Desktop",
                     subtitle = if (isFirebaseLoggedIn)
-                        "${firebaseUser.email.orEmpty()} • ID: $effectiveSyncId"
+                        "${firebaseUser?.email.orEmpty()} • ID: $effectiveSyncId"
                     else
                         "Sync ID: ${effectiveSyncId.ifBlank { "Guest" }} • Tap to sign in or pair code",
                     onClick = { showAuthModal = true }

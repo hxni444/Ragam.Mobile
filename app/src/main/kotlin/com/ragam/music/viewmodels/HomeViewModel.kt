@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Velune - by Nikhil
  * Nikhil
  * Licensed Under GPL-3.0
@@ -9,6 +9,7 @@
 package com.ragam.music.viewmodels
 
 import android.content.Context
+import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ragam.music.innertube.YouTube
@@ -141,7 +142,21 @@ class HomeViewModel @Inject constructor(
                             section.copy(items = section.items.filterExplicit(hideExplicit).filterVideo(hideVideo))
                         }
                     )
-                }.onFailure { reportException(it) }
+                }.onFailure { err ->
+                    reportException(err)
+                    if (err is io.ktor.client.plugins.ClientRequestException && err.response.status == io.ktor.http.HttpStatusCode.Unauthorized) {
+                        context.dataStore.edit { prefs -> prefs[InnerTubeCookieKey] = "" }
+                        YouTube.cookie = null
+                        YouTube.home().onSuccess { page ->
+                            homePage.value = page.copy(
+                                chips = filterHomeChips(page.chips),
+                                sections = page.sections.map { section ->
+                                    section.copy(items = section.items.filterExplicit(hideExplicit).filterVideo(hideVideo))
+                                }
+                            )
+                        }
+                    }
+                }
             }
 
             allYtItems.value = homePage.value?.sections?.flatMap { it.items }.orEmpty()
@@ -299,6 +314,14 @@ class HomeViewModel @Inject constructor(
                         accountImageUrl.value = info.thumbnailUrl
                     }.onFailure {
                         timber.log.Timber.w(it, "Failed to fetch account info")
+                        if (it is io.ktor.client.plugins.ClientRequestException && it.response.status == io.ktor.http.HttpStatusCode.Unauthorized) {
+                            timber.log.Timber.w("YouTube session expired (401). Clearing invalid cookie.")
+                            context.dataStore.edit { prefs -> prefs[InnerTubeCookieKey] = "" }
+                            YouTube.cookie = null
+                            accountName.value = "Guest"
+                            accountImageUrl.value = null
+                            accountPlaylists.value = null
+                        }
                     }
 
                     launch {

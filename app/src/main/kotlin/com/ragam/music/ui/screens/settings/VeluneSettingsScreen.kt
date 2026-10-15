@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Velune - by Nikhil
  * Licensed Under GPL-3.0
  */
@@ -43,7 +43,14 @@ fun VeluneSettingsScreen(
     val viewModel: HomeViewModel = hiltViewModel(context as androidx.activity.ComponentActivity)
     val accountName by viewModel.accountName.collectAsState()
     val accountImageUrl by viewModel.accountImageUrl.collectAsState()
-    val isLoggedIn = accountName != "Guest" && !accountName.isNullOrEmpty()
+    val syncRepo = com.ragam.music.LocalMusicSyncRepository.current
+    val firebaseUser by syncRepo.currentUser.collectAsState()
+    val isFirebaseLoggedIn = firebaseUser != null
+    val isUserLoggedIn = (accountName != "Guest" && !accountName.isNullOrEmpty()) || isFirebaseLoggedIn
+    val effectiveAvatarUrl = firebaseUser?.photoUrl?.toString() ?: if (isUserLoggedIn) accountImageUrl else null
+    val effectiveAccountName = firebaseUser?.displayName?.takeIf { it.isNotBlank() }
+        ?: accountName?.takeIf { it.isNotBlank() && it != "Guest" }
+        ?: firebaseUser?.email ?: "Guest"
     var showLogoutDialog by remember { mutableStateOf(false) }
     val (innerTubeCookie, onInnerTubeCookieChange) = rememberPreference(InnerTubeCookieKey, "")
 
@@ -128,10 +135,10 @@ fun VeluneSettingsScreen(
             */
 
             item {
-                if (isLoggedIn) {
+                if (isUserLoggedIn) {
                     SettingsItemAccountStyle(
-                        model = accountImageUrl,
-                        fallbackText = accountName?.firstOrNull()?.uppercase()?:"",
+                        model = effectiveAvatarUrl,
+                        fallbackText = effectiveAccountName.firstOrNull()?.uppercase() ?: "",
                         title = "Account",
                         onClick = { navController.navigate("settings/account") }
                     )
